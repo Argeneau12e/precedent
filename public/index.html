@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Precedent — Pre-trade stress testing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"></script>
+<style>
+  :root {
+    --bg: #0c0a07;
+    --glass: rgba(24, 20, 14, 0.55);
+    --glass-border: rgba(212, 160, 23, 0.22);
+    --amber: #D4A017;
+    --gold: #F2C94C;
+    --text: #F3ECDB;
+    --text-muted: #9C8F72;
+    --red: #E0654F;
+    --green: #6FBF73;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image: radial-gradient(ellipse at top, rgba(212,160,23,0.08), transparent 60%);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+  header { padding: 48px 24px 24px; text-align: center; }
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 3rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin: 0;
+    color: var(--gold);
+  }
+  .tagline { color: var(--text-muted); font-size: 0.95rem; margin-top: 6px; }
+  main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 24px;
+  }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  .glass {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    backdrop-filter: blur(12px);
+    padding: 24px;
+  }
+  label { display: block; font-size: 0.8rem; color: var(--text-muted); margin: 16px 0 6px; }
+  select, textarea, input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+  }
+  textarea { min-height: 90px; resize: vertical; }
+  button {
+    margin-top: 20px;
+    width: 100%;
+    background: var(--amber);
+    color: #14110a;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  .regime-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .stat { border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px; }
+  .stat .label { color: var(--text-muted); font-size: 0.75rem; }
+  .stat .value { font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; margin-top: 4px; }
+  .positive { color: var(--green); }
+  .negative { color: var(--red); }
+  .brief {
+    line-height: 1.6;
+    font-size: 0.95rem;
+    border-top: 1px solid var(--glass-border);
+    padding-top: 16px;
+    margin-top: 16px;
+  }
+  .empty-state { color: var(--text-muted); text-align: center; padding: 40px 20px; }
+  .headlines { margin-top: 16px; font-size: 0.85rem; color: var(--text-muted); }
+  .headlines li { margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PRECEDENT</h1>
+  <div class="tagline">See what happened last time this setup showed up — before you take the trade.</div>
+</header>
+<main>
+  <div class="glass">
+    <label for="symbol">Symbol</label>
+    <select id="symbol">
+      <optgroup label="Equities">
+        <option value="AAPL">AAPL</option>
+        <option value="TSLA">TSLA</option>
+        <option value="NVDA">NVDA</option>
+        <option value="MSFT">MSFT</option>
+        <option value="AMZN">AMZN</option>
+        <option value="GOOGL">GOOGL</option>
+        <option value="META">META</option>
+        <option value="SPY">SPY</option>
+      </optgroup>
+      <optgroup label="Crypto">
+        <option value="BTC">BTC</option>
+        <option value="ETH">ETH</option>
+      </optgroup>
+    </select>
+
+    <label for="thesis">Your thesis</label>
+    <textarea id="thesis" placeholder="e.g. Thinking NVDA breaks out after earnings — going long calls into the print"></textarea>
+
+    <label for="catalyst">Catalyst (optional)</label>
+    <input id="catalyst" placeholder="e.g. earnings, rate decision, product launch" />
+
+    <button id="runBtn"><i data-lucide="search"></i> Run stress test</button>
+  </div>
+
+  <div class="glass" id="results">
+    <div class="empty-state">Pick a symbol and describe your thesis to run a stress test.</div>
+  </div>
+</main>
+
+<script>
+  lucide.createIcons();
+  const runBtn = document.getElementById('runBtn');
+  const results = document.getElementById('results');
+
+  function fmtPct(v) {
+    if (v == null) return '—';
+    const cls = v >= 0 ? 'positive' : 'negative';
+    return `<span class="${cls}">${(v * 100).toFixed(2)}%</span>`;
+  }
+
+  runBtn.addEventListener('click', async () => {
+    const symbol = document.getElementById('symbol').value;
+    const thesis = document.getElementById('thesis').value;
+    const catalyst = document.getElementById('catalyst').value;
+
+    runBtn.disabled = true;
+    runBtn.textContent = 'Running...';
+    results.innerHTML = '<div class="empty-state">Pulling historical data and running the stress test...</div>';
+
+    try {
+      const barsRes = await fetch(`/api/bars?symbol=${symbol}`);
+      const barsData = await barsRes.json();
+      if (!barsRes.ok) throw new Error(barsData.error || 'Failed to fetch bars');
+
+      const stRes = await fetch('/api/stress-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol, bars: barsData.bars, thesis, catalyst }),
+      });
+      const data = await stRes.json();
+      if (!stRes.ok) throw new Error(data.error || 'Stress test failed');
+
+      if (!data.stats) {
+        results.innerHTML = `<div class="empty-state">${data.brief}</div>`;
+        return;
+      }
+
+      results.innerHTML = `
+        <span class="regime-badge">${data.regime.replace('_', ' ')}</span>
+        <div class="stat-grid">
+          <div class="stat"><div class="label">Mean 5d forward return</div><div class="value">${fmtPct(data.stats.meanForwardReturn5d)}</div></div>
+          <div class="stat"><div class="label">Mean 20d forward return</div><div class="value">${fmtPct(data.stats.meanForwardReturn20d)}</div></div>
+          <div class="stat"><div class="label">20d win rate</div><div class="value">${(data.stats.winRate20d * 100).toFixed(1)}%</div></div>
+          <div class="stat"><div class="label">Mean max drawdown</div><div class="value">${fmtPct(data.stats.meanMaxDrawdown20d)}</div></div>
+        </div>
+        <div style="color: var(--text-muted); font-size: 0.8rem;">Based on ${data.matchCount} historical analogues</div>
+        <div class="brief">${data.brief}</div>
+        ${data.headlines && data.headlines.length ? `<ul class="headlines">${data.headlines.map(h => `<li>${h.title} — ${h.source}</li>`).join('')}</ul>` : ''}
+      `;
+    } catch (err) {
+      results.innerHTML = `<div class="empty-state">${err.message}</div>`;
+    } finally {
+      runBtn.disabled = false;
+      runBtn.innerHTML = '<i data-lucide="search"></i> Run stress test';
+      lucide.createIcons();
+    }
+  });
+</script>
+</body>
+</html>

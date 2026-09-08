@@ -27,22 +27,25 @@ missing or there is too little history, you get an explicit empty/error state.
 | Asset | Source | Key required |
 |---|---|---|
 | BTC / ETH | Coinbase Exchange candles (keyless) | No |
-| US equities / SPY | Alpha Vantage `TIME_SERIES_DAILY` (free tier) | Yes |
+| US equities / SPY | Yahoo Finance chart endpoint, ~5y daily OHLC | No |
 | Fear & Greed Index | alternative.me (keyless) | No |
 | Headlines | NewsAPI | Yes |
-| Narrative brief | Groq (`llama-3.3-70b-versatile`) | Yes |
+| Narrative brief | Groq (`qwen/qwen3.8-27b` by default) | Yes |
+
+Equities are pulled from Yahoo Finance because Alpha Vantage's free tier only
+exposes 100 daily bars — below the 200-bar floor the regime classifier needs.
+The whole data pipeline (crypto and equities) runs with no market-data key.
 
 ## Setup
 
 1. `npm install`
 2. Copy `.env.example` to `.env`. `GROQ_API_KEY` is required for the narrative
    brief; without it, Precedent still computes and shows the real base rates
-   with an explicit note. `ALPHA_VANTAGE_API_KEY` and `NEWSAPI_KEY` are free-tier
-   and recommended but the app degrades gracefully without them (equities return
-   a clear "check API keys" state; headlines are omitted).
-3. `npm run build-db` — seeds `scenarioDB.json` with real historical scenarios.
-   Crypto is fetched keylessly; equities are skipped (with a warning) if the
-   Alpha Vantage key is missing. Takes a few minutes.
+   with an explicit note. `GROQ_MODEL` is optional (defaults to
+   `qwen/qwen3.8-27b`); `NEWSAPI_KEY` is recommended but headlines are omitted
+   without it.
+3. `npm run build-db` — seeds `scenarioDB.json` with real historical scenarios
+   across BTC, ETH, and the equity universe. Takes a few minutes.
 4. `npm start`, then open http://localhost:3000
 
 ## Deploy

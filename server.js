@@ -12,11 +12,14 @@ const { computeRSI, computeMACD, fetchFearGreedIndex, fetchNewsHeadlines } = req
 const scenarioDB = require('./scenarioDB.json');
 
 const app = express();
-app.use(express.json());
+// Equities carry ~5y of daily bars (often >100KB), far above express's default
+// 100KB JSON body limit — raise it so stress-test requests aren't rejected.
+app.use(express.json({ limit: '16mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // groq-sdk throws at construction when no key is present; construct lazily so
 // a missing key yields an explicit no-brief state (rule #1) instead of a crash.
+const GROQ_MODEL = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
 const groq = process.env.GROQ_API_KEY
   ? new Groq({ apiKey: process.env.GROQ_API_KEY })
   : null;
@@ -100,7 +103,10 @@ TASK
 Write a 150-220 word plain-English stress test brief. Open with the base-rate win rate and drawdown. Reference the technical signals and headlines only if they meaningfully agree or conflict with the base rate. State once, clearly, that this is historical pattern-matching, not a prediction. Do not hedge every sentence.`;
 
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_MODEL,
+      // The brief is 150-220 words (~300 tokens); bound output so requests
+      // stay under this key's per-minute output-token limit.
+      max_tokens: 450,
       messages: [{ role: 'user', content: prompt }],
     });
 

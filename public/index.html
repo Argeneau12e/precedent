@@ -4,248 +4,440 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Precedent — Pre-trade stress testing</title>
+<meta name="description" content="See what happened last time this setup showed up, before you take the trade." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"></script>
 <style>
   :root {
-    --bg: #0c0a07;
-    --glass: rgba(24, 20, 14, 0.55);
-    --glass-border: rgba(212, 160, 23, 0.22);
+    --bg: #0a0908;
+    --panel: rgba(24, 20, 14, 0.62);
+    --panel-solid: #131110;
+    --inset: rgba(0, 0, 0, 0.32);
+    --border: rgba(212, 160, 23, 0.15);
+    --border-strong: rgba(212, 160, 23, 0.34);
     --amber: #D4A017;
     --gold: #F2C94C;
     --text: #F3ECDB;
-    --text-muted: #9C8F72;
+    --muted: #9A8C6E;
+    --muted-dim: #6F6551;
     --red: #E0654F;
     --green: #6FBF73;
+    --radius: 16px;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0;
     background: var(--bg);
-    background-image: radial-gradient(ellipse at top, rgba(212,160,23,0.08), transparent 60%);
+    background-image: radial-gradient(ellipse 900px 480px at 22% -8%, rgba(212, 160, 23, 0.055), transparent 70%);
+    background-repeat: no-repeat;
     color: var(--text);
     font-family: 'DM Sans', sans-serif;
-    min-height: 100vh;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
   }
-  header { padding: 48px 24px 24px; text-align: center; }
-  h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 3rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    margin: 0;
-    color: var(--gold);
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* ---------- app shell ---------- */
+  .app { display: grid; grid-template-columns: 70px minmax(0, 1fr); min-height: 100vh; }
+  .rail {
+    position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 16px 0; border-right: 1px solid var(--border);
+    background: rgba(13, 12, 10, 0.72);
+    backdrop-filter: blur(14px);
   }
-  .tagline { color: var(--text-muted); font-size: 0.95rem; margin-top: 6px; }
-  main {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 24px;
-    display: grid;
-    grid-template-columns: 1fr 1.3fr;
-    gap: 24px;
+  .rail-logo {
+    width: 36px; height: 36px; border-radius: 11px; margin-bottom: 12px;
+    background: var(--amber); color: #161207;
+    display: grid; place-items: center;
+    font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 600;
+    box-shadow: 0 6px 18px rgba(212, 160, 23, 0.22);
   }
-  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
-  .glass {
-    background: var(--glass);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    backdrop-filter: blur(12px);
-    padding: 24px;
+  .rail-btn {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: transparent; border: 1px solid transparent;
+    color: var(--muted-dim); cursor: pointer;
+    display: grid; place-items: center; padding: 0;
+    transition: color .16s ease, background .16s ease, border-color .16s ease;
   }
-  label { display: block; font-size: 0.8rem; color: var(--text-muted); margin: 16px 0 6px; }
-  select, textarea, input {
-    width: 100%;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    padding: 10px 12px;
-    font-size: 0.95rem;
+  .rail-btn svg { width: 18px; height: 18px; }
+  .rail-btn:hover, .rail-btn.active { color: var(--gold); background: rgba(212, 160, 23, 0.09); border-color: var(--border); }
+  .rail-spacer { flex: 1; }
+
+  .shell { width: 100%; max-width: 1320px; margin: 0 auto; padding: 20px 28px 34px; min-width: 0; }
+
+  /* ---------- top bar ---------- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 20px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand h1 {
+    font-family: 'Cormorant Garamond', serif; font-size: 1.85rem; font-weight: 600;
+    letter-spacing: 0.16em; color: var(--gold); margin: 0; line-height: 1;
   }
-  textarea { min-height: 90px; resize: vertical; }
-  button {
-    margin-top: 20px;
-    width: 100%;
-    background: var(--amber);
-    color: #14110a;
-    border: none;
-    border-radius: 8px;
-    padding: 12px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    cursor: pointer;
+  .brand .tagline { color: var(--muted); font-size: 0.8rem; }
+  .top-right { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .chip-status {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: rgba(0, 0, 0, 0.3);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
   }
-  button:disabled { opacity: 0.5; cursor: wait; }
-  .regime-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    border: 1px solid var(--glass-border);
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+  .chip-status b { color: var(--text); font-weight: 500; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .dot.warn { background: var(--amber); }
+  .dot.idle { background: var(--muted-dim); }
+
+  /* ---------- hero ---------- */
+  .hero {
+    border: 1px solid var(--border); border-radius: 22px;
+    background: var(--panel); backdrop-filter: blur(16px);
+    padding: 26px 26px 22px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.025);
   }
-  .stat-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin: 20px 0;
+  .hero-title {
+    font-family: 'Cormorant Garamond', serif; font-size: 2.05rem; font-weight: 600;
+    margin: 0 0 4px; letter-spacing: 0.02em; color: var(--text);
   }
-  .stat { border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px; }
-  .stat .label { color: var(--text-muted); font-size: 0.75rem; }
-  .stat .value { font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; margin-top: 4px; }
+  .hero-sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 18px; }
+  .qrow { display: flex; gap: 12px; align-items: stretch; }
+  #question {
+    flex: 1; min-width: 0; min-height: 78px; resize: vertical;
+    background: var(--inset); border: 1px solid var(--border); border-radius: 14px;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.98rem;
+    padding: 15px 16px; line-height: 1.5;
+  }
+  #question::placeholder { color: var(--muted-dim); }
+  #question:focus, select:focus, input:focus { outline: none; border-color: var(--border-strong); }
+  .btn-run {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: var(--amber); color: #161207; border: none; border-radius: 14px;
+    padding: 0 24px; font-size: 0.92rem; font-weight: 600; cursor: pointer;
+    white-space: nowrap; font-family: 'DM Sans', sans-serif;
+    transition: background .16s ease, transform .16s ease;
+  }
+  .btn-run svg { width: 17px; height: 17px; }
+  .btn-run:hover { background: var(--gold); }
+  .btn-run:active { transform: translateY(1px); }
+  .btn-run:disabled { opacity: 0.55; cursor: wait; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+  .chip {
+    width: auto; margin: 0; padding: 7px 12px; border-radius: 999px;
+    background: rgba(0, 0, 0, 0.22); border: 1px solid var(--border);
+    color: var(--muted); font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem; cursor: pointer; transition: color .16s ease, border-color .16s ease;
+  }
+  .chip:hover { color: var(--gold); border-color: var(--border-strong); }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
+    margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border);
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field > label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem;
+    text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted);
+  }
+  .field select, .field input {
+    background: var(--inset); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.86rem;
+    padding: 10px 12px; min-width: 172px;
+  }
+  .detected { color: var(--gold); font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; margin-left: 6px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .seg label {
+    display: inline-flex; align-items: center; gap: 7px; margin: 0;
+    padding: 10px 13px; font-size: 0.82rem; color: var(--muted); cursor: pointer;
+  }
+  .seg label input { display: none; }
+  .seg label.on { background: rgba(212, 160, 23, 0.14); color: var(--gold); }
+  .seg label + label { border-left: 1px solid var(--border); }
+
+  /* ---------- card grid ---------- */
+  .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+  .card {
+    grid-column: span 12;
+    border: 1px solid var(--border); border-radius: 18px;
+    background: var(--panel); backdrop-filter: blur(14px);
+    padding: 18px;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    min-width: 0;
+  }
+  .c3 { grid-column: span 3; } .c4 { grid-column: span 4; }
+  .c5 { grid-column: span 5; } .c6 { grid-column: span 6; }
+  .c7 { grid-column: span 7; } .c8 { grid-column: span 8; }
+  .c12 { grid-column: span 12; }
+  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+  .card-ico {
+    width: 30px; height: 30px; border-radius: 9px; flex: none;
+    background: rgba(212, 160, 23, 0.11); color: var(--gold);
+    display: grid; place-items: center;
+  }
+  .card-ico svg { width: 15px; height: 15px; }
+  .card-title {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted);
+  }
+  .card-head .spacer { flex: 1; }
+  .card-note { font-size: 0.74rem; color: var(--muted); line-height: 1.6; }
+  .card-big { font-family: 'IBM Plex Mono', monospace; font-size: 1.55rem; letter-spacing: -0.01em; }
+  .empty-state { color: var(--muted); text-align: center; padding: 54px 24px; font-size: 0.9rem; }
   .positive { color: var(--green); }
   .negative { color: var(--red); }
-  .brief {
-    line-height: 1.6;
-    font-size: 0.95rem;
-    border-top: 1px solid var(--glass-border);
-    padding-top: 16px;
-    margin-top: 16px;
-  }
-  .empty-state { color: var(--text-muted); text-align: center; padding: 40px 20px; }
-  .headlines { margin-top: 16px; font-size: 0.85rem; color: var(--text-muted); }
-  .headlines li { margin-bottom: 6px; }
-  .muted { color: var(--text-muted); }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .chip {
-    width: auto; margin: 0; padding: 6px 10px; border-radius: 999px;
-    background: transparent; border: 1px solid var(--glass-border);
-    color: var(--text-muted); font-size: 0.78rem; font-weight: 500;
-  }
-  .chip:hover { color: var(--gold); border-color: var(--amber); }
-  .detected { font-family: 'IBM Plex Mono', monospace; color: var(--gold); font-size: 0.78rem; margin-left: 6px; }
-  .toggle { display: flex; gap: 8px; margin-top: 6px; }
-  .toggle label {
-    display: flex; align-items: center; gap: 6px; margin: 0; padding: 8px 12px;
-    border: 1px solid var(--glass-border); border-radius: 8px;
-    color: var(--text); font-size: 0.82rem; cursor: pointer;
-  }
-  .toggle input { width: auto; }
-  .badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 4px; }
-  .src-badge {
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; letter-spacing: 0.04em;
-    padding: 4px 9px; border-radius: 999px; border: 1px solid var(--glass-border);
-    color: var(--text-muted); text-transform: uppercase;
-  }
-  .src-badge.warn { color: #E0A64F; border-color: rgba(224,166,79,0.5); }
-  .section-title {
-    font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; letter-spacing: 0.03em;
-    margin: 22px 0 8px; color: var(--gold);
-  }
-  .decision {
-    border-left: 2px solid var(--amber); background: rgba(212,160,23,0.06);
-    padding: 12px 14px; border-radius: 0 8px 8px 0; font-size: 0.9rem; line-height: 1.5;
-  }
-  .histo { display: flex; align-items: flex-end; gap: 4px; height: 92px; margin-top: 10px; }
-  .histo-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
-  .histo-bar { width: 100%; background: rgba(212,160,23,0.55); border-radius: 3px 3px 0 0; min-height: 2px; }
-  .histo-bar.pos { background: rgba(111,191,115,0.6); }
-  .histo-bar.neg { background: rgba(224,101,79,0.6); }
-  .histo-count { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 3px; }
-  .histo-axis { display: flex; gap: 4px; margin-top: 4px; }
-  .histo-axis span {
+  .muted { color: var(--muted); }
+
+  /* ---------- data viz: ring gauge ---------- */
+  .ring-box { position: relative; display: grid; place-items: center; width: 132px; height: 132px; flex: none; }
+  .ring { width: 132px; height: 132px; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 9; stroke-linecap: round; }
+  .ring .track { stroke: rgba(255, 255, 255, 0.07); }
+  .ring-fill { transition: stroke-dashoffset .9s cubic-bezier(.22,.61,.36,1); }
+  .ring-val { position: absolute; text-align: center; }
+  .ring-val b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 1.45rem; font-weight: 500; }
+  .ring-val span { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; }
+
+  /* ---------- data viz: sparkline ---------- */
+  .spark { width: 100%; height: 104px; display: block; }
+  .spark .area { fill: rgba(212, 160, 23, 0.09); }
+  .spark .line { fill: none; stroke: var(--amber); stroke-width: 1.7; stroke-linejoin: round; }
+  .spark .ma { fill: none; stroke: rgba(243, 236, 219, 0.26); stroke-width: 1; stroke-dasharray: 4 4; }
+
+  /* ---------- data viz: bar chart ---------- */
+  .bars { display: flex; align-items: flex-end; gap: 9px; height: 132px; }
+  .bars-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 7px; }
+  .bars-val { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--muted); }
+  .bars-bar { width: 100%; border-radius: 8px; background: rgba(212, 160, 23, 0.42); min-height: 3px; transition: height .6s ease; }
+  .bars-bar.g { background: rgba(111, 191, 115, 0.5); }
+  .bars-bar.r { background: rgba(224, 101, 79, 0.5); }
+  .bars-axis { display: flex; gap: 9px; margin-top: 9px; }
+  .bars-axis span {
     flex: 1; text-align: center; font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.62rem; color: var(--text-muted);
+    font-size: 0.62rem; color: var(--muted-dim);
   }
-  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 8px; }
+
+  /* ---------- data viz: meters ---------- */
+  .meter + .meter { margin-top: 13px; }
+  .meter-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 10px; }
+  .meter-top .k { font-size: 0.78rem; color: var(--muted); }
+  .meter-top .v { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+  .meter-track { height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+  .meter-fill { height: 100%; border-radius: 999px; background: var(--amber); transition: width .7s cubic-bezier(.22,.61,.36,1); }
+  .meter-fill.g { background: var(--green); }
+  .meter-fill.r { background: var(--red); }
+
+  /* ---------- key/value rows ---------- */
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid rgba(212, 160, 23, 0.08); font-size: 0.82rem; }
+  .kv:last-child { border-bottom: none; }
+  .kv .k { color: var(--muted); }
+  .kv .v { font-family: 'IBM Plex Mono', monospace; }
+  .kv-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
+
+  /* ---------- badges ---------- */
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: rgba(0, 0, 0, 0.25);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.66rem;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .badge.regime { color: var(--gold); border-color: var(--border-strong); background: rgba(212, 160, 23, 0.1); font-size: 0.72rem; }
+  .badge.warn { color: var(--amber); border-color: rgba(212, 160, 23, 0.4); }
+
+  /* ---------- decision callout ---------- */
+  .decision {
+    margin-top: 15px; padding: 13px 15px;
+    border-left: 2px solid var(--amber); border-radius: 0 10px 10px 0;
+    background: rgba(212, 160, 23, 0.06);
+    font-size: 0.86rem; line-height: 1.6;
+  }
+  .decision b { color: var(--gold); font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
+
+  /* ---------- brief ---------- */
+  .brief { font-size: 0.93rem; line-height: 1.72; color: #E7DFCC; }
+  .brief p { margin: 0 0 13px; }
+  .brief p:last-child { margin-bottom: 0; }
+
+  /* ---------- tables ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
   th {
-    text-align: left; font-weight: 500; color: var(--text-muted); font-size: 0.72rem;
-    text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px;
-    border-bottom: 1px solid var(--glass-border);
+    text-align: left; font-weight: 500; color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    white-space: nowrap;
   }
-  td { padding: 6px 8px; border-bottom: 1px solid rgba(212,160,23,0.08); font-family: 'IBM Plex Mono', monospace; }
+  td { padding: 8px 10px; border-bottom: 1px solid rgba(212, 160, 23, 0.07); font-family: 'IBM Plex Mono', monospace; white-space: nowrap; }
+  tbody tr:hover td { background: rgba(212, 160, 23, 0.035); }
   td.sym { font-family: 'DM Sans', sans-serif; }
-  details { margin-top: 14px; }
-  summary {
-    cursor: pointer; color: var(--gold); font-size: 0.85rem;
-    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.02em;
+  .table-wrap { overflow-x: auto; }
+
+  /* ---------- playbook rows ---------- */
+  .pb-row {
+    display: grid; grid-template-columns: 130px 46px 1fr 92px 92px;
+    gap: 14px; align-items: center; padding: 11px 0;
+    border-bottom: 1px solid rgba(212, 160, 23, 0.08);
   }
-  .math-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 18px; margin-top: 8px; }
-  .math-row { display: flex; justify-content: space-between; font-size: 0.82rem; border-bottom: 1px solid rgba(212,160,23,0.08); padding: 5px 0; }
-  .math-row .k { color: var(--text-muted); }
-  .math-row .v { font-family: 'IBM Plex Mono', monospace; }
+  .pb-row:last-child { border-bottom: none; }
+  .pb-name { font-size: 0.84rem; }
+  .pb-n { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: var(--muted); }
+  .pb-num { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; text-align: right; }
+  .wr-track { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); position: relative; overflow: hidden; }
+  .wr-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--green); }
+  .wr-fill.r { background: var(--red); }
+  .pb-cols { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--muted-dim); text-transform: uppercase; letter-spacing: 0.07em; }
+
+  /* ---------- headlines ---------- */
+  .headlines { list-style: none; margin: 0; padding: 0; }
+  .headlines li { padding: 9px 0; border-bottom: 1px solid rgba(212, 160, 23, 0.07); font-size: 0.83rem; line-height: 1.5; }
+  .headlines li:last-child { border-bottom: none; }
+  .headlines .src { display: block; color: var(--muted-dim); font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; margin-top: 3px; }
+
+  /* ---------- actions + footer ---------- */
+  .actions { display: flex; gap: 9px; flex-wrap: wrap; }
+  .btn-ghost {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem;
+    padding: 8px 12px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .btn-ghost:hover { color: var(--gold); border-color: var(--border-strong); }
+  .btn-ghost svg { width: 13px; height: 13px; }
   .provenance {
-    max-width: 1000px; margin: 8px auto 40px; padding: 0 24px;
-    color: var(--text-muted); font-size: 0.72rem; line-height: 1.7;
-    font-family: 'IBM Plex Mono', monospace;
+    margin-top: 18px; color: var(--muted-dim);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; line-height: 1.8;
   }
-  .provenance b { color: var(--text); font-weight: 500; }
+  .provenance b { color: var(--muted); font-weight: 500; }
+
+  @media (max-width: 1180px) { .c3 { grid-column: span 6; } }
+  @media (max-width: 980px) {
+    .c3, .c4, .c5, .c6, .c7, .c8 { grid-column: span 12; }
+    .kv-2col { grid-template-columns: 1fr; }
+    .pb-row { grid-template-columns: 112px 38px 1fr 84px; }
+    .pb-row .pb-worst { display: none; }
+  }
+  @media (max-width: 720px) {
+    .app { grid-template-columns: 1fr; }
+    .rail { display: none; }
+    .shell { padding: 16px 16px 28px; }
+    .hero { padding: 20px 18px; }
+    .hero-title { font-size: 1.6rem; }
+    .qrow { flex-direction: column; }
+    .btn-run { padding: 14px 20px; justify-content: center; }
+    .brand h1 { font-size: 1.5rem; }
+    .ring-box { width: 112px; height: 112px; }
+    .ring { width: 112px; height: 112px; }
+  }
+
 </style>
 </head>
 <body>
-<header>
-  <h1>PRECEDENT</h1>
-  <div class="tagline">See what happened last time this setup showed up — before you take the trade.</div>
-</header>
-<main>
-  <div class="glass">
-    <label for="question">Ask a question</label>
-    <textarea id="question" placeholder="e.g. Should I open a long in NVDA into earnings? I think the breakout continues."></textarea>
-    <div class="chips">
-      <button type="button" class="chip" data-example="Should I open a long in NVDA into earnings? I think the breakout continues.">NVDA into earnings</button>
-      <button type="button" class="chip" data-example="Is Bitcoin's bull run durable, or is it running out of steam?">Is BTC's run durable?</button>
-      <button type="button" class="chip" data-example="Tesla is breaking out on high volume. Is this a real move or a trap?">TSLA breakout trap?</button>
-      <button type="button" class="chip" data-example="The S&P is at highs. How much drawdown should I expect if I buy here?">SPY at highs</button>
+<div class="app">
+  <aside class="rail">
+    <div class="rail-logo">P</div>
+    <button class="rail-btn active" data-goto="#hero" title="Ask a question"><i data-lucide="crosshair"></i></button>
+    <button class="rail-btn" data-goto="#card-returns" title="Forward returns"><i data-lucide="trending-up"></i></button>
+    <button class="rail-btn" data-goto="#card-risk" title="Drawdown risk"><i data-lucide="shield"></i></button>
+    <button class="rail-btn" data-goto="#card-brief" title="Brief"><i data-lucide="book-open"></i></button>
+    <button class="rail-btn" data-goto="#card-analogues" title="Matched scenarios"><i data-lucide="table-2"></i></button>
+    <button class="rail-btn" data-goto="#card-playbook" title="Regime playbook"><i data-lucide="layers"></i></button>
+    <div class="rail-spacer"></div>
+    <button class="rail-btn" data-goto="#provenance" title="Data sources"><i data-lucide="database"></i></button>
+  </aside>
+
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand">
+        <h1>PRECEDENT</h1>
+        <span class="tagline">See what happened last time this setup showed up.</span>
+      </div>
+      <div class="top-right">
+        <span class="chip-status"><span class="dot idle"></span> <b id="scenarioCount">—</b> scenarios</span>
+        <span class="chip-status"><span class="dot idle"></span> feed <b id="feedState">idle</b></span>
+        <span class="chip-status"><span class="dot idle"></span> <b id="modelName">model</b></span>
+      </div>
     </div>
 
-    <label for="symbol">Symbol <span class="detected" id="detected"></span></label>
-    <select id="symbol">
-      <optgroup label="Equities">
-        <option value="AAPL">AAPL</option>
-        <option value="TSLA">TSLA</option>
-        <option value="NVDA">NVDA</option>
-        <option value="MSFT">MSFT</option>
-        <option value="AMZN">AMZN</option>
-        <option value="GOOGL">GOOGL</option>
-        <option value="META">META</option>
-        <option value="SPY">SPY</option>
-      </optgroup>
-      <optgroup label="Crypto">
-        <option value="BTC">BTC</option>
-        <option value="ETH">ETH</option>
-      </optgroup>
-    </select>
+    <section class="hero" id="hero">
+      <h2 class="hero-title">What do you need?</h2>
+      <p class="hero-sub">Ask in plain English. Precedent classifies today's regime, retrieves the historical setups that looked like this one, and shows what actually happened next.</p>
+      <div class="qrow">
+        <textarea id="question" placeholder="e.g. Should I open a long in NVDA into earnings? I think the breakout continues."></textarea>
+        <button type="button" class="btn-run" id="runBtn"><i data-lucide="search"></i> Stress test</button>
+      </div>
+      <div class="chips">
+        <button type="button" class="chip" data-example="Should I open a long in NVDA into earnings? I think the breakout continues.">NVDA into earnings</button>
+        <button type="button" class="chip" data-example="Is Bitcoin's bull run durable, or is it running out of steam?">Is BTC's run durable?</button>
+        <button type="button" class="chip" data-example="Tesla is breaking out on high volume. Is this a real move or a trap?">TSLA breakout trap?</button>
+        <button type="button" class="chip" data-example="The S&P is at highs. How much drawdown should I expect if I buy here?">SPY at highs</button>
+      </div>
 
-    <label for="catalyst">Catalyst (optional)</label>
-    <input id="catalyst" placeholder="e.g. earnings, rate decision, product launch" />
+      <div class="controls">
+        <div class="field">
+          <label for="symbol">Symbol <span class="detected" id="detected"></span></label>
+          <select id="symbol">
+            <optgroup label="Equities">
+              <option value="AAPL">AAPL</option>
+              <option value="TSLA">TSLA</option>
+              <option value="NVDA">NVDA</option>
+              <option value="MSFT">MSFT</option>
+              <option value="AMZN">AMZN</option>
+              <option value="GOOGL">GOOGL</option>
+              <option value="META">META</option>
+              <option value="SPY">SPY</option>
+            </optgroup>
+            <optgroup label="Crypto">
+              <option value="BTC">BTC</option>
+              <option value="ETH">ETH</option>
+            </optgroup>
+          </select>
+        </div>
 
-    <label>Analogue universe</label>
-    <div class="toggle">
-      <label><input type="radio" name="scope" value="all" checked /> All assets</label>
-      <label><input type="radio" name="scope" value="same" /> This asset only</label>
+        <div class="field">
+          <label for="catalyst">Catalyst (optional)</label>
+          <input id="catalyst" placeholder="earnings, rate decision, launch" />
+        </div>
+
+        <div class="field">
+          <label>Analogue universe</label>
+          <div class="seg" id="scopeSeg">
+            <label class="on"><input type="radio" name="scope" value="all" checked /> All assets</label>
+            <label><input type="radio" name="scope" value="same" /> This asset</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="results">
+      <div class="grid">
+        <div class="card">
+          <div class="empty-state">Type a question above. Precedent will find the historical setups that matched this one and what happened next.</div>
+        </div>
+      </div>
     </div>
 
-    <button id="runBtn"><i data-lucide="search"></i> Run stress test</button>
+    <div class="provenance" id="provenance"></div>
   </div>
-
-  <div class="glass" id="results">
-    <div class="empty-state">Type a question about a symbol to run a stress test.</div>
-  </div>
-</main>
-
-<div class="provenance" id="provenance"></div>
+</div>
 
 <script>
   lucide.createIcons();
+
   const runBtn = document.getElementById('runBtn');
   const results = document.getElementById('results');
   const symbolSelect = document.getElementById('symbol');
   const questionInput = document.getElementById('question');
   const detectedLabel = document.getElementById('detected');
   const provenance = document.getElementById('provenance');
+  const feedState = document.getElementById('feedState');
+  const scenarioCount = document.getElementById('scenarioCount');
+  const modelName = document.getElementById('modelName');
 
   const SYMBOLS = [...symbolSelect.options].map(o => o.value);
 
-  // Natural-language ticker detection. Track 3 is pitched as a
-  // "natural-language-driven workbench", so the symbol is inferred from the
-  // typed question; the dropdown remains as a manual override.
+  // ---- natural-language ticker detection -------------------------------------
+  // Track 3 is pitched as a natural-language-driven workbench, so the symbol is
+  // inferred from the typed question; the dropdown stays as a manual override.
   const ALIASES = {
     BITCOIN: 'BTC', ETHEREUM: 'ETH', GOOGLE: 'GOOGL', ALPHABET: 'GOOGL',
     APPLE: 'AAPL', TESLA: 'TSLA', NVIDIA: 'NVDA', MICROSOFT: 'MSFT',
@@ -285,6 +477,23 @@
     });
   });
 
+  document.querySelectorAll('#scopeSeg label').forEach(label => {
+    label.addEventListener('click', () => {
+      document.querySelectorAll('#scopeSeg label').forEach(l => l.classList.remove('on'));
+      label.classList.add('on');
+    });
+  });
+
+  document.querySelectorAll('.rail-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.rail-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const target = document.querySelector(btn.dataset.goto);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // ---- formatting helpers ----------------------------------------------------
   function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, c => (
       { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -293,54 +502,129 @@
 
   function fmtPct(v, digits = 2) {
     if (v == null) return '<span class="muted">—</span>';
-    const cls = v >= 0 ? 'positive' : 'negative';
-    return `<span class="${cls}">${(v * 100).toFixed(digits)}%</span>`;
+    return `<span class="${v >= 0 ? 'positive' : 'negative'}">${(v * 100).toFixed(digits)}%</span>`;
   }
 
-  function mathRow(k, v) {
-    return `<div class="math-row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  function pct(v, digits = 2) {
+    return v == null ? '—' : `${(v * 100).toFixed(digits)}%`;
+  }
+
+  function num(v, digits = 2) {
+    return v == null ? '—' : Number(v).toFixed(digits);
+  }
+
+  function kv(k, v) {
+    return `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  }
+
+  function cardHead(icon, title, right = '') {
+    return `<div class="card-head">
+      <span class="card-ico"><i data-lucide="${icon}"></i></span>
+      <span class="card-title">${title}</span>
+      <span class="spacer"></span>${right}
+    </div>`;
   }
 
   function scope() {
     return document.querySelector('input[name="scope"]:checked').value;
   }
 
-  function regimeBadge(regime) {
-    return `<span class="regime-badge">${String(regime).replace(/_/g, ' ')}</span>`;
+  function setFeed(source, asOf) {
+    const labels = { live: 'live', cache: 'cached', snapshot: 'snapshot', 'cache-stale': 'stale cache' };
+    feedState.textContent = labels[source] || 'unknown';
+    const dot = feedState.parentElement.querySelector('.dot');
+    dot.className = 'dot' + (source === 'live' ? '' : (source ? ' warn' : ' idle'));
+    if (asOf) feedState.title = `Latest bar: ${asOf}`;
   }
 
-  // Label the bar feed honestly: live, cached, or served from the committed
-  // snapshot because the upstream was unreachable.
-  function sourceBadge(source, asOf) {
-    const when = asOf ? ` · ${asOf}` : '';
-    if (source === 'live') return `<span class="src-badge">bars: live${when}</span>`;
-    if (source === 'cache') return `<span class="src-badge">bars: cached${when}</span>`;
-    if (source === 'snapshot') return `<span class="src-badge warn">bars: snapshot${when}</span>`;
-    if (source === 'cache-stale') return `<span class="src-badge warn">bars: stale cache${when}</span>`;
-    return '';
+  // Win-rate ring — the first number a trader reads.
+  function ring(value, label) {
+    const C = 2 * Math.PI * 56;
+    const filled = value == null ? 0 : Math.max(0, Math.min(1, value));
+    const colour = value == null ? 'var(--muted-dim)' : (filled >= 0.5 ? 'var(--green)' : 'var(--red)');
+    const offset = (C * (1 - filled)).toFixed(1);
+    return `<div class="ring-box">
+      <svg class="ring" viewBox="0 0 132 132" aria-hidden="true">
+        <circle class="track" cx="66" cy="66" r="56"></circle>
+        <circle class="ring-fill" cx="66" cy="66" r="56" style="stroke:${colour};stroke-dasharray:${C.toFixed(1)};stroke-dashoffset:${offset}"></circle>
+      </svg>
+      <div class="ring-val"><b>${value == null ? '—' : pct(filled, 0)}</b><span>${label}</span></div>
+    </div>`;
   }
 
-  // Real distribution of the analogues' next-20-day returns. The mean hides the
-  // spread; this shows how the outcomes actually clustered.
-  function histogram(matches) {
+  // Real price action: the last 120 closes from the bars we actually fetched,
+  // with a 50-day mean for context.
+  function sparkline(bars) {
+    const series = bars.map(b => b.close).slice(-120);
+    if (series.length < 2) return '';
+    const w = 600, h = 104, pad = 8;
+    const min = Math.min(...series);
+    const max = Math.max(...series);
+    const span = (max - min) || 1;
+    const x = i => (i / (series.length - 1)) * w;
+    const y = v => pad + (1 - (v - min) / span) * (h - pad * 2);
+    const line = series.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const ma = series.map((_, i) => {
+      const slice = series.slice(Math.max(0, i - 49), i + 1);
+      return slice.reduce((a, b) => a + b, 0) / slice.length;
+    });
+    const maLine = ma.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+      <polygon class="area" points="0,${h} ${line} ${w},${h}" vector-effect="non-scaling-stroke"></polygon>
+      <polyline class="ma" points="${maLine}" vector-effect="non-scaling-stroke"></polyline>
+      <polyline class="line" points="${line}" vector-effect="non-scaling-stroke"></polyline>
+    </svg>`;
+  }
+
+  // Where the analogues' next-20-day outcomes actually landed.
+  function bucketBars(matches) {
     const values = matches.map(m => m.forwardReturn20d).filter(v => v != null);
-    if (!values.length) return '<div class="muted" style="font-size:0.82rem;">No 20-day outcomes recorded for these analogues.</div>';
+    if (!values.length) return '<div class="card-note">No 20-day outcomes recorded for these analogues.</div>';
     const edges = [-0.10, -0.05, 0, 0.05, 0.10];
     const labels = ['&lt;-10%', '-10…-5%', '-5…0%', '0…5%', '5…10%', '&gt;10%'];
-    const buckets = new Array(6).fill(0);
+    const counts = new Array(6).fill(0);
     values.forEach(v => {
       let i = 0;
       while (i < edges.length && v >= edges[i]) i++;
-      buckets[i]++;
+      counts[i]++;
     });
-    const max = Math.max(...buckets, 1);
-    const cols = buckets.map((count, i) => {
-      const height = count === 0 ? 2 : Math.max(6, Math.round((count / max) * 82));
-      const cls = count === 0 ? '' : (i <= 2 ? 'neg' : 'pos');
-      return `<div class="histo-col"><div class="histo-count">${count}</div><div class="histo-bar ${cls}" style="height:${height}px"></div></div>`;
+    const max = Math.max(...counts, 1);
+    const cols = counts.map((c, i) => {
+      const height = c === 0 ? 3 : Math.max(10, Math.round((c / max) * 92));
+      const cls = c === 0 ? '' : (i <= 2 ? 'r' : 'g');
+      return `<div class="bars-col"><span class="bars-val">${c}</span><div class="bars-bar ${cls}" style="height:${height}px"></div></div>`;
     }).join('');
     const axis = labels.map(l => `<span>${l}</span>`).join('');
-    return `<div class="histo">${cols}</div><div class="histo-axis">${axis}</div>`;
+    return `<div class="bars">${cols}</div><div class="bars-axis">${axis}</div>`;
+  }
+
+  function meter(label, valueText, fraction, tone = '') {
+    const width = Math.max(0, Math.min(1, fraction || 0)) * 100;
+    return `<div class="meter">
+      <div class="meter-top"><span class="k">${label}</span><span class="v">${valueText}</span></div>
+      <div class="meter-track"><div class="meter-fill ${tone}" style="width:${width.toFixed(1)}%"></div></div>
+    </div>`;
+  }
+
+  function playbookRows(playbook) {
+    const head = `<div class="pb-row">
+      <span class="pb-cols">Regime</span>
+      <span class="pb-cols">n</span>
+      <span class="pb-cols">20d win rate</span>
+      <span class="pb-cols" style="text-align:right">Mean 20d</span>
+      <span class="pb-cols pb-worst" style="text-align:right">Worst DD</span>
+    </div>`;
+    const rows = playbook.regimes.map(r => {
+      const wr = r.winRate20d == null ? 0 : r.winRate20d;
+      return `<div class="pb-row">
+        <span class="pb-name">${String(r.regime).replace(/_/g, ' ')}</span>
+        <span class="pb-n">${r.sampleSize}</span>
+        <div class="wr-track"><div class="wr-fill ${wr >= 0.5 ? '' : 'r'}" style="width:${(wr * 100).toFixed(1)}%"></div></div>
+        <span class="pb-num">${fmtPct(r.meanForwardReturn20d)}</span>
+        <span class="pb-num pb-worst">${fmtPct(r.worstMaxDrawdown20d)}</span>
+      </div>`;
+    }).join('');
+    return head + rows;
   }
 
   function analogueTable(matches) {
@@ -351,51 +635,25 @@
       <td>${fmtPct(m.forwardReturn5d)}</td>
       <td>${fmtPct(m.forwardReturn20d)}</td>
       <td>${fmtPct(m.maxDrawdown20d)}</td>
-      <td>${m.distance}</td>
+      <td class="muted">${m.distance}</td>
     </tr>`).join('');
-    return `<table>
+    return `<div class="table-wrap"><table>
       <thead><tr><th>Date</th><th>Asset</th><th>Regime</th><th>Next 5d</th><th>Next 20d</th><th>Max DD 20d</th><th>Distance</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>`;
+    </table></div>`;
   }
 
-  function mathPanel(features) {
-    return `<div class="math-grid">
-      ${mathRow('Price', features.price != null ? features.price.toFixed(2) : '—')}
-      ${mathRow('MA50', features.ma50 != null ? features.ma50.toFixed(2) : '—')}
-      ${mathRow('MA200', features.ma200 != null ? features.ma200.toFixed(2) : '—')}
-      ${mathRow('Momentum 20d', fmtPct(features.momentum20))}
-      ${mathRow('ATR percentile', features.atrPercentile != null ? `${(features.atrPercentile * 100).toFixed(0)}th` : '—')}
-      ${mathRow('As of', escapeHtml(features.asOf || '—'))}
-    </div>`;
-  }
-
-  function playbookTable(playbook) {
-    const rows = playbook.regimes.map(r => `<tr>
-      <td class="sym">${String(r.regime).replace(/_/g, ' ')}</td>
-      <td>${r.sampleSize}</td>
-      <td>${fmtPct(r.winRate20d, 1)}</td>
-      <td>${fmtPct(r.meanForwardReturn20d)}</td>
-      <td>${fmtPct(r.medianForwardReturn20d)}</td>
-      <td>${fmtPct(r.worstMaxDrawdown20d)}</td>
-    </tr>`).join('');
-    return `<table>
-      <thead><tr><th>Regime</th><th>n</th><th>20d win</th><th>Mean 20d</th><th>Median 20d</th><th>Worst DD</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-  }
-
-  // The research-workbench view: how this asset has behaved in every regime it
-  // has actually traded in, with sample sizes so each row can be weighted.
   async function loadPlaybook(symbol) {
     try {
       const res = await fetch(`/api/playbook?symbol=${encodeURIComponent(symbol)}`);
       if (!res.ok) return '';
       const playbook = await res.json();
       if (!playbook.regimes || !playbook.regimes.length) return '';
-      return `<div class="section-title">Regime playbook — ${escapeHtml(playbook.symbol)}</div>
-        <div class="muted" style="font-size:0.8rem;">Every regime this asset has traded in, across ${playbook.total} stored scenarios. Regimes with fewer than ${playbook.minSample} samples are omitted rather than shown with a meaningless win rate.</div>
-        ${playbookTable(playbook)}`;
+      return `<div class="card c5" id="card-playbook">
+        ${cardHead('layers', `Regime playbook — ${escapeHtml(playbook.symbol)}`)}
+        <div class="card-note" style="margin-bottom:14px;">Every regime this asset has traded in across ${playbook.total} stored scenarios. Regimes with fewer than ${playbook.minSample} samples are omitted rather than shown with a meaningless win rate.</div>
+        ${playbookRows(playbook)}
+      </div>`;
     } catch {
       return '';
     }
@@ -406,18 +664,51 @@
       const res = await fetch('/api/meta');
       if (!res.ok) return;
       const meta = await res.json();
+      scenarioCount.textContent = meta.scenarioCount.toLocaleString();
+      modelName.textContent = meta.llm || 'no model';
       const dbDate = meta.dbBuiltAt ? meta.dbBuiltAt.slice(0, 10) : 'unknown';
       const snapDate = meta.snapshotBuiltAt ? meta.snapshotBuiltAt.slice(0, 10) : 'none committed';
-      provenance.innerHTML = `<b>${meta.scenarioCount.toLocaleString()}</b> historical scenarios · <b>${meta.symbolCount}</b> assets · scenario DB built ${dbDate} · bars snapshot ${snapDate}<br />`
-        + `Sources: ${meta.sources.map(s => escapeHtml(s)).join(' · ')}<br />`
-        + `Narrative model: ${meta.llm ? escapeHtml(meta.llm) : 'not configured — set GROQ_API_KEY to enable briefs'}`;
+      provenance.innerHTML =
+        `<div><b>${meta.scenarioCount.toLocaleString()}</b> historical scenarios · <b>${meta.symbolCount}</b> assets · scenario DB built ${dbDate} · bars snapshot ${snapDate}</div>`
+        + `<div>Sources: ${meta.sources.map(s => escapeHtml(s)).join(' · ')}</div>`
+        + `<div>Narrative model: ${meta.llm ? escapeHtml(meta.llm) : 'not configured — set GROQ_API_KEY to enable briefs'}</div>`
+        + `<div>Every figure above is computed from stored historical bars. Nothing is synthesized — when a source is unavailable the app says so instead of filling the gap.</div>`;
     } catch {
       /* the provenance strip is optional and must never block the app */
     }
   }
   loadProvenance();
 
-  runBtn.addEventListener('click', async () => {
+  function downloadCsv(symbol, matches) {
+    const header = 'date,asset,regime,forward_return_5d,forward_return_20d,max_drawdown_20d,distance';
+    const lines = matches.map(m => [
+      m.date, m.symbol, m.regime, m.forwardReturn5d, m.forwardReturn20d, m.maxDrawdown20d, m.distance,
+    ].join(','));
+    const blob = new Blob([`${header}\n${lines.join('\n')}`], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `precedent-${symbol}-analogues.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+
+  let last = null;
+
+  results.addEventListener('click', event => {
+    const btn = event.target.closest('[data-action]');
+    if (!btn || !last) return;
+    if (btn.dataset.action === 'copy') {
+      navigator.clipboard.writeText(last.brief).then(() => {
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.innerHTML = '<i data-lucide="copy"></i> Copy brief'; lucide.createIcons(); }, 1600);
+      }).catch(() => { btn.textContent = 'Copy failed'; });
+    }
+    if (btn.dataset.action === 'csv') downloadCsv(last.symbol, last.matches);
+  });
+
+  async function run() {
     const symbol = symbolSelect.value;
     const question = questionInput.value.trim();
     const catalyst = document.getElementById('catalyst').value.trim();
@@ -425,12 +716,13 @@
 
     runBtn.disabled = true;
     runBtn.textContent = 'Running...';
-    results.innerHTML = '<div class="empty-state">Pulling historical bars, classifying the regime and matching analogues...</div>';
+    results.innerHTML = `<div class="grid"><div class="card"><div class="empty-state">Pulling historical bars, classifying the regime and matching analogues...</div></div></div>`;
 
     try {
       const barsRes = await fetch(`/api/bars?symbol=${encodeURIComponent(symbol)}`);
       const barsData = await barsRes.json();
       if (!barsRes.ok) throw new Error(barsData.error || 'Failed to fetch bars');
+      setFeed(barsData.source, barsData.asOf);
 
       const stRes = await fetch('/api/stress-test', {
         method: 'POST',
@@ -449,72 +741,118 @@
       if (!stRes.ok) throw new Error(data.error || 'Stress test failed');
 
       if (!data.stats) {
-        results.innerHTML = `<div class="empty-state">${escapeHtml(data.brief)}</div>`;
+        results.innerHTML = `<div class="grid"><div class="card"><div class="empty-state">${escapeHtml(data.brief)}</div></div></div>`;
         return;
       }
 
       const s = data.stats;
-      const paragraphs = escapeHtml(data.brief)
-        .split(/\n{2,}/)
-        .map(p => `<p>${p.replace(/\n/g, '<br />')}</p>`)
-        .join('');
+      const f = data.features || {};
+      last = { symbol, brief: data.brief, matches: data.matches || [] };
+      const paragraphs = escapeHtml(data.brief).split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, '<br />')}</p>`).join('');
       const playbookHtml = await loadPlaybook(symbol);
+      const scopeNote = scopeValue === 'same' ? 'same asset only' : 'cross-asset';
+      const feedBadge = data.barsSource && data.barsSource !== 'live'
+        ? `<span class="badge warn">bars: ${escapeHtml(data.barsSource)}${data.barsAsOf ? ` · ${escapeHtml(data.barsAsOf)}` : ''}</span>`
+        : `<span class="badge">bars: live${data.barsAsOf ? ` · ${escapeHtml(data.barsAsOf)}` : ''}</span>`;
 
-      results.innerHTML = `
-        <div class="badges">
-          ${regimeBadge(data.regime)}
-          ${sourceBadge(data.barsSource, data.barsAsOf)}
-          <span class="src-badge">n=${s.sampleSize} analogues</span>
-          <span class="src-badge">${scopeValue === 'same' ? 'this asset only' : 'cross-asset'}</span>
+      results.innerHTML = `<div class="grid">
+
+        <div class="card c4" id="card-verdict">
+          ${cardHead('crosshair', 'Verdict at a glance')}
+          <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+            ${ring(s.winRate20d, '20d win rate')}
+            <div style="min-width:0;">
+              <div class="badges" style="margin-bottom:10px;">
+                <span class="badge regime">${String(data.regime).replace(/_/g, ' ')}</span>
+              </div>
+              <div class="card-note">${s.sampleSize} analogues · ${scopeNote} · 5d win rate ${pct(s.winRate5d, 0)}</div>
+            </div>
+          </div>
+          ${s.adverseExcursionP75 != null ? `<div class="decision">Plan for at least a <b>${pct(s.adverseExcursionP75, 1)}</b> adverse excursion. Half of these analogues were further underwater than that within 20 days — the level at which this setup stops behaving like its typical self.</div>` : ''}
+          <div style="margin-top:14px;">${feedBadge}</div>
         </div>
 
-        <div class="stat-grid">
-          <div class="stat"><div class="label">Mean 5d forward return</div><div class="value">${fmtPct(s.meanForwardReturn5d)}</div></div>
-          <div class="stat"><div class="label">Mean 20d forward return</div><div class="value">${fmtPct(s.meanForwardReturn20d)}</div></div>
-          <div class="stat"><div class="label">20d win rate</div><div class="value">${s.winRate20d != null ? `${(s.winRate20d * 100).toFixed(1)}%` : '—'}</div></div>
-          <div class="stat"><div class="label">Mean max drawdown (20d)</div><div class="value">${fmtPct(s.meanMaxDrawdown20d)}</div></div>
-          <div class="stat"><div class="label">Median 20d return</div><div class="value">${fmtPct(s.medianForwardReturn20d)}</div></div>
-          <div class="stat"><div class="label">Best / worst 20d</div><div class="value">${fmtPct(s.bestForwardReturn20d)} / ${fmtPct(s.worstForwardReturn20d)}</div></div>
-          <div class="stat"><div class="label">Worst drawdown in sample</div><div class="value">${fmtPct(s.worstMaxDrawdown20d)}</div></div>
-          <div class="stat"><div class="label">Drew down &gt;5%</div><div class="value">${s.shareDrawdownOver5pct != null ? `${(s.shareDrawdownOver5pct * 100).toFixed(0)}%` : '—'}</div></div>
+        <div class="card c8" id="card-price">
+          ${cardHead('activity', `Price action — ${escapeHtml(symbol)}`)}
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:10px; flex-wrap:wrap;">
+            <div>
+              <div class="card-big">${num(f.price)}</div>
+              <div class="card-note">Last close ${escapeHtml(f.asOf || '—')} · 20d momentum ${fmtPct(f.momentum20)}</div>
+            </div>
+            <div class="badges">
+              <span class="badge">${barsData.bars.length} bars loaded</span>
+              <span class="badge">ATR percentile ${f.atrPercentile != null ? `${(f.atrPercentile * 100).toFixed(0)}th` : '—'}</span>
+            </div>
+          </div>
+          ${sparkline(barsData.bars)}
+          <div class="card-note" style="margin-top:8px;">Last 120 closes (amber) against the 50-day mean (dashed).</div>
+          <div class="kv-2col" style="margin-top:14px;">
+            ${kv('MA50', num(f.ma50))}
+            ${kv('MA200', num(f.ma200))}
+            ${kv('Price vs MA50', f.ma50 ? fmtPct((f.price - f.ma50) / f.ma50) : '—')}
+            ${kv('Price vs MA200', f.ma200 ? fmtPct((f.price - f.ma200) / f.ma200) : '—')}
+          </div>
         </div>
 
-        ${s.adverseExcursionP75 != null ? `<div class="decision">Plan for at least a <b>${(s.adverseExcursionP75 * 100).toFixed(1)}%</b> adverse excursion. Half of these analogues were further underwater than that within 20 days — the level at which this setup stops behaving like its typical self.</div>` : ''}
-
-        <div class="section-title">Distribution of the next 20 days</div>
-        ${histogram(data.matches)}
-
-        <div class="section-title">Brief</div>
-        <div class="brief">${paragraphs}</div>
-
-        <div class="section-title">Regime math</div>
-        ${mathPanel(data.features)}
-
-        <div class="section-title">Signals</div>
-        <div class="math-grid">
-          ${mathRow('RSI(14)', data.rsi != null ? data.rsi.toFixed(1) : 'unavailable')}
-          ${mathRow('MACD histogram', data.macd ? data.macd.histogram.toFixed(3) : 'unavailable')}
-          ${mathRow('Fear &amp; Greed', data.fearGreed ? `${data.fearGreed.value} (${escapeHtml(data.fearGreed.classification)})` : 'not applicable')}
+        <div class="card c7" id="card-returns">
+          ${cardHead('trending-up', 'Forward returns after the match')}
+          ${bucketBars(last.matches)}
+          <div class="kv-2col" style="margin-top:16px;">
+            ${kv('Mean 5d', fmtPct(s.meanForwardReturn5d))}
+            ${kv('Mean 20d', fmtPct(s.meanForwardReturn20d))}
+            ${kv('Median 20d', fmtPct(s.medianForwardReturn20d))}
+            ${kv('Interquartile 20d', `${pct(s.p25ForwardReturn20d, 1)} – ${pct(s.p75ForwardReturn20d, 1)}`)}
+            ${kv('Best 20d', fmtPct(s.bestForwardReturn20d))}
+            ${kv('Worst 20d', fmtPct(s.worstForwardReturn20d))}
+          </div>
         </div>
 
-        <details>
-          <summary>Show the ${data.matchCount} matched historical scenarios</summary>
-          ${analogueTable(data.matches)}
-        </details>
+        <div class="card c5" id="card-risk">
+          ${cardHead('shield', 'Drawdown risk')}
+          ${meter('Mean max drawdown (20d)', pct(s.meanMaxDrawdown20d, 2), Math.abs(s.meanMaxDrawdown20d || 0) / 0.3, 'r')}
+          ${meter('Worst drawdown in sample', pct(s.worstMaxDrawdown20d, 2), Math.abs(s.worstMaxDrawdown20d || 0) / 0.3, 'r')}
+          ${meter('Analogues that drew down >5%', pct(s.shareDrawdownOver5pct, 0), s.shareDrawdownOver5pct || 0, 'r')}
+          ${meter('Adverse excursion to plan for', pct(s.adverseExcursionP75, 2), (s.adverseExcursionP75 || 0) / 0.3)}
+          <div class="card-note" style="margin-top:15px;">Meters are scaled to a 30% adverse move — the range where these assets actually operate.</div>
+        </div>
+
+        <div class="card c8" id="card-brief">
+          ${cardHead('book-open', 'Stress test brief', `<button type="button" class="btn-ghost" data-action="copy"><i data-lucide="copy"></i> Copy brief</button>`)}
+          <div class="brief">${paragraphs}</div>
+        </div>
+
+        <div class="card c4" id="card-signals">
+          ${cardHead('gauge', 'Live signals')}
+          ${meter('RSI(14)', data.rsi != null ? data.rsi.toFixed(1) : 'unavailable', (data.rsi || 0) / 100, data.rsi != null && data.rsi > 70 ? 'r' : (data.rsi != null && data.rsi < 30 ? 'g' : ''))}
+          ${meter('MACD histogram', data.macd ? data.macd.histogram.toFixed(3) : 'unavailable', Math.min(1, Math.abs((data.macd && data.macd.histogram) || 0) / 2), data.macd && data.macd.histogram >= 0 ? 'g' : 'r')}
+          ${meter('Fear &amp; Greed', data.fearGreed ? `${data.fearGreed.value} (${escapeHtml(data.fearGreed.classification)})` : 'not applicable', (data.fearGreed && data.fearGreed.value || 0) / 100, data.fearGreed && data.fearGreed.value >= 55 ? 'g' : 'r')}
+          <div class="card-note" style="margin-top:15px;">RSI reads overbought above 70 and oversold below 30. Fear &amp; Greed applies to crypto symbols only.</div>
+        </div>
+
+        <div class="card c12" id="card-analogues">
+          ${cardHead('table-2', `${s.sampleSize} matched historical scenarios`, `<button type="button" class="btn-ghost" data-action="csv"><i data-lucide="download"></i> Export CSV</button>`)}
+          <div class="card-note" style="margin-bottom:10px;">Each row is a real historical setup matched on regime, 20-day momentum and ATR percentile — with what actually happened over the following 5 and 20 days. Lower distance means a closer match.</div>
+          ${analogueTable(last.matches)}
+        </div>
 
         ${playbookHtml}
 
-        ${data.headlines && data.headlines.length ? `<div class="section-title">Headlines</div><ul class="headlines">${data.headlines.map(h => `<li>${escapeHtml(h.title)} — ${escapeHtml(h.source)}</li>`).join('')}</ul>` : ''}
-      `;
+        ${data.headlines && data.headlines.length ? `<div class="card c7">
+          ${cardHead('newspaper', 'Headlines')}
+          <ul class="headlines">${data.headlines.map(h => `<li>${escapeHtml(h.title)}<span class="src">${escapeHtml(h.source)}</span></li>`).join('')}</ul>
+        </div>` : ''}
+
+      </div>`;
     } catch (err) {
-      results.innerHTML = `<div class="empty-state">${escapeHtml(err.message)}</div>`;
+      results.innerHTML = `<div class="grid"><div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div></div>`;
     } finally {
       runBtn.disabled = false;
-      runBtn.innerHTML = '<i data-lucide="search"></i> Run stress test';
+      runBtn.innerHTML = '<i data-lucide="search"></i> Stress test';
       lucide.createIcons();
     }
-  });
+  }
 
+  runBtn.addEventListener('click', run);
 </script>
 </body>
 </html>

@@ -4,7 +4,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build-db": "node scripts/buildScenarioDB.js"
+    "build-db": "node scripts/buildScenarioDB.js",
+    "snapshot": "node scripts/snapshotBars.js"
   },
   "dependencies": {
     "express": "^4.19.2",

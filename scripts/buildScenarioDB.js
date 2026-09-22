@@ -70,7 +70,7 @@ async function main() {
   }
 
   if (all.length === 0) {
-    console.warn('WARNING: scenarioDB is empty — ALPHA_VANTAGE_API_KEY is likely missing. Do not fabricate entries here to fill the gap.');
+    console.warn('WARNING: scenarioDB is empty — every upstream fetch failed. Do not fabricate entries here to fill the gap.');
   }
 
   fs.writeFileSync(path.join(__dirname, '../scenarioDB.json'), JSON.stringify(all, null, 2));

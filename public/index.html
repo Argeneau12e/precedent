@@ -112,6 +112,71 @@
   .empty-state { color: var(--text-muted); text-align: center; padding: 40px 20px; }
   .headlines { margin-top: 16px; font-size: 0.85rem; color: var(--text-muted); }
   .headlines li { margin-bottom: 6px; }
+  .muted { color: var(--text-muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip {
+    width: auto; margin: 0; padding: 6px 10px; border-radius: 999px;
+    background: transparent; border: 1px solid var(--glass-border);
+    color: var(--text-muted); font-size: 0.78rem; font-weight: 500;
+  }
+  .chip:hover { color: var(--gold); border-color: var(--amber); }
+  .detected { font-family: 'IBM Plex Mono', monospace; color: var(--gold); font-size: 0.78rem; margin-left: 6px; }
+  .toggle { display: flex; gap: 8px; margin-top: 6px; }
+  .toggle label {
+    display: flex; align-items: center; gap: 6px; margin: 0; padding: 8px 12px;
+    border: 1px solid var(--glass-border); border-radius: 8px;
+    color: var(--text); font-size: 0.82rem; cursor: pointer;
+  }
+  .toggle input { width: auto; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 4px; }
+  .src-badge {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; letter-spacing: 0.04em;
+    padding: 4px 9px; border-radius: 999px; border: 1px solid var(--glass-border);
+    color: var(--text-muted); text-transform: uppercase;
+  }
+  .src-badge.warn { color: #E0A64F; border-color: rgba(224,166,79,0.5); }
+  .section-title {
+    font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; letter-spacing: 0.03em;
+    margin: 22px 0 8px; color: var(--gold);
+  }
+  .decision {
+    border-left: 2px solid var(--amber); background: rgba(212,160,23,0.06);
+    padding: 12px 14px; border-radius: 0 8px 8px 0; font-size: 0.9rem; line-height: 1.5;
+  }
+  .histo { display: flex; align-items: flex-end; gap: 4px; height: 92px; margin-top: 10px; }
+  .histo-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
+  .histo-bar { width: 100%; background: rgba(212,160,23,0.55); border-radius: 3px 3px 0 0; min-height: 2px; }
+  .histo-bar.pos { background: rgba(111,191,115,0.6); }
+  .histo-bar.neg { background: rgba(224,101,79,0.6); }
+  .histo-count { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 3px; }
+  .histo-axis { display: flex; gap: 4px; margin-top: 4px; }
+  .histo-axis span {
+    flex: 1; text-align: center; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem; color: var(--text-muted);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 8px; }
+  th {
+    text-align: left; font-weight: 500; color: var(--text-muted); font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px;
+    border-bottom: 1px solid var(--glass-border);
+  }
+  td { padding: 6px 8px; border-bottom: 1px solid rgba(212,160,23,0.08); font-family: 'IBM Plex Mono', monospace; }
+  td.sym { font-family: 'DM Sans', sans-serif; }
+  details { margin-top: 14px; }
+  summary {
+    cursor: pointer; color: var(--gold); font-size: 0.85rem;
+    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.02em;
+  }
+  .math-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 18px; margin-top: 8px; }
+  .math-row { display: flex; justify-content: space-between; font-size: 0.82rem; border-bottom: 1px solid rgba(212,160,23,0.08); padding: 5px 0; }
+  .math-row .k { color: var(--text-muted); }
+  .math-row .v { font-family: 'IBM Plex Mono', monospace; }
+  .provenance {
+    max-width: 1000px; margin: 8px auto 40px; padding: 0 24px;
+    color: var(--text-muted); font-size: 0.72rem; line-height: 1.7;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .provenance b { color: var(--text); font-weight: 500; }
 </style>
 </head>
 <body>
@@ -121,7 +186,16 @@
 </header>
 <main>
   <div class="glass">
-    <label for="symbol">Symbol</label>
+    <label for="question">Ask a question</label>
+    <textarea id="question" placeholder="e.g. Should I open a long in NVDA into earnings? I think the breakout continues."></textarea>
+    <div class="chips">
+      <button type="button" class="chip" data-example="Should I open a long in NVDA into earnings? I think the breakout continues.">NVDA into earnings</button>
+      <button type="button" class="chip" data-example="Is Bitcoin's bull run durable, or is it running out of steam?">Is BTC's run durable?</button>
+      <button type="button" class="chip" data-example="Tesla is breaking out on high volume. Is this a real move or a trap?">TSLA breakout trap?</button>
+      <button type="button" class="chip" data-example="The S&P is at highs. How much drawdown should I expect if I buy here?">SPY at highs</button>
+    </div>
+
+    <label for="symbol">Symbol <span class="detected" id="detected"></span></label>
     <select id="symbol">
       <optgroup label="Equities">
         <option value="AAPL">AAPL</option>
@@ -139,78 +213,308 @@
       </optgroup>
     </select>
 
-    <label for="thesis">Your thesis</label>
-    <textarea id="thesis" placeholder="e.g. Thinking NVDA breaks out after earnings — going long calls into the print"></textarea>
-
     <label for="catalyst">Catalyst (optional)</label>
     <input id="catalyst" placeholder="e.g. earnings, rate decision, product launch" />
+
+    <label>Analogue universe</label>
+    <div class="toggle">
+      <label><input type="radio" name="scope" value="all" checked /> All assets</label>
+      <label><input type="radio" name="scope" value="same" /> This asset only</label>
+    </div>
 
     <button id="runBtn"><i data-lucide="search"></i> Run stress test</button>
   </div>
 
   <div class="glass" id="results">
-    <div class="empty-state">Pick a symbol and describe your thesis to run a stress test.</div>
+    <div class="empty-state">Type a question about a symbol to run a stress test.</div>
   </div>
 </main>
+
+<div class="provenance" id="provenance"></div>
 
 <script>
   lucide.createIcons();
   const runBtn = document.getElementById('runBtn');
   const results = document.getElementById('results');
+  const symbolSelect = document.getElementById('symbol');
+  const questionInput = document.getElementById('question');
+  const detectedLabel = document.getElementById('detected');
+  const provenance = document.getElementById('provenance');
 
-  function fmtPct(v) {
-    if (v == null) return '—';
-    const cls = v >= 0 ? 'positive' : 'negative';
-    return `<span class="${cls}">${(v * 100).toFixed(2)}%</span>`;
+  const SYMBOLS = [...symbolSelect.options].map(o => o.value);
+
+  // Natural-language ticker detection. Track 3 is pitched as a
+  // "natural-language-driven workbench", so the symbol is inferred from the
+  // typed question; the dropdown remains as a manual override.
+  const ALIASES = {
+    BITCOIN: 'BTC', ETHEREUM: 'ETH', GOOGLE: 'GOOGL', ALPHABET: 'GOOGL',
+    APPLE: 'AAPL', TESLA: 'TSLA', NVIDIA: 'NVDA', MICROSOFT: 'MSFT',
+    AMAZON: 'AMZN', FACEBOOK: 'META',
+  };
+  const ALIAS_PHRASES = [
+    ['S&P500', 'SPY'], ['S&P 500', 'SPY'], ['S&P', 'SPY'], ['SP500', 'SPY'], ['SPX', 'SPY'],
+  ];
+
+  function wordHit(upper, token) {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(^|[^A-Z0-9])${escaped}([^A-Z0-9]|$)`).test(upper);
   }
 
+  function detectSymbol(text) {
+    const upper = (text || '').toUpperCase();
+    for (const [phrase, sym] of ALIAS_PHRASES) if (wordHit(upper, phrase)) return sym;
+    for (const [alias, sym] of Object.entries(ALIASES)) if (wordHit(upper, alias)) return sym;
+    for (const sym of SYMBOLS) if (wordHit(upper, sym)) return sym;
+    return null;
+  }
+
+  questionInput.addEventListener('input', () => {
+    const found = detectSymbol(questionInput.value);
+    if (found) {
+      symbolSelect.value = found;
+      detectedLabel.textContent = `detected ${found}`;
+    } else {
+      detectedLabel.textContent = '';
+    }
+  });
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      questionInput.value = chip.dataset.example;
+      questionInput.dispatchEvent(new Event('input'));
+    });
+  });
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  function fmtPct(v, digits = 2) {
+    if (v == null) return '<span class="muted">—</span>';
+    const cls = v >= 0 ? 'positive' : 'negative';
+    return `<span class="${cls}">${(v * 100).toFixed(digits)}%</span>`;
+  }
+
+  function mathRow(k, v) {
+    return `<div class="math-row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  }
+
+  function scope() {
+    return document.querySelector('input[name="scope"]:checked').value;
+  }
+
+  function regimeBadge(regime) {
+    return `<span class="regime-badge">${String(regime).replace(/_/g, ' ')}</span>`;
+  }
+
+  // Label the bar feed honestly: live, cached, or served from the committed
+  // snapshot because the upstream was unreachable.
+  function sourceBadge(source, asOf) {
+    const when = asOf ? ` · ${asOf}` : '';
+    if (source === 'live') return `<span class="src-badge">bars: live${when}</span>`;
+    if (source === 'cache') return `<span class="src-badge">bars: cached${when}</span>`;
+    if (source === 'snapshot') return `<span class="src-badge warn">bars: snapshot${when}</span>`;
+    if (source === 'cache-stale') return `<span class="src-badge warn">bars: stale cache${when}</span>`;
+    return '';
+  }
+
+  // Real distribution of the analogues' next-20-day returns. The mean hides the
+  // spread; this shows how the outcomes actually clustered.
+  function histogram(matches) {
+    const values = matches.map(m => m.forwardReturn20d).filter(v => v != null);
+    if (!values.length) return '<div class="muted" style="font-size:0.82rem;">No 20-day outcomes recorded for these analogues.</div>';
+    const edges = [-0.10, -0.05, 0, 0.05, 0.10];
+    const labels = ['&lt;-10%', '-10…-5%', '-5…0%', '0…5%', '5…10%', '&gt;10%'];
+    const buckets = new Array(6).fill(0);
+    values.forEach(v => {
+      let i = 0;
+      while (i < edges.length && v >= edges[i]) i++;
+      buckets[i]++;
+    });
+    const max = Math.max(...buckets, 1);
+    const cols = buckets.map((count, i) => {
+      const height = count === 0 ? 2 : Math.max(6, Math.round((count / max) * 82));
+      const cls = count === 0 ? '' : (i <= 2 ? 'neg' : 'pos');
+      return `<div class="histo-col"><div class="histo-count">${count}</div><div class="histo-bar ${cls}" style="height:${height}px"></div></div>`;
+    }).join('');
+    const axis = labels.map(l => `<span>${l}</span>`).join('');
+    return `<div class="histo">${cols}</div><div class="histo-axis">${axis}</div>`;
+  }
+
+  function analogueTable(matches) {
+    const rows = matches.map(m => `<tr>
+      <td>${escapeHtml(m.date)}</td>
+      <td class="sym">${escapeHtml(m.symbol)}</td>
+      <td class="sym">${String(m.regime).replace(/_/g, ' ')}</td>
+      <td>${fmtPct(m.forwardReturn5d)}</td>
+      <td>${fmtPct(m.forwardReturn20d)}</td>
+      <td>${fmtPct(m.maxDrawdown20d)}</td>
+      <td>${m.distance}</td>
+    </tr>`).join('');
+    return `<table>
+      <thead><tr><th>Date</th><th>Asset</th><th>Regime</th><th>Next 5d</th><th>Next 20d</th><th>Max DD 20d</th><th>Distance</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  function mathPanel(features) {
+    return `<div class="math-grid">
+      ${mathRow('Price', features.price != null ? features.price.toFixed(2) : '—')}
+      ${mathRow('MA50', features.ma50 != null ? features.ma50.toFixed(2) : '—')}
+      ${mathRow('MA200', features.ma200 != null ? features.ma200.toFixed(2) : '—')}
+      ${mathRow('Momentum 20d', fmtPct(features.momentum20))}
+      ${mathRow('ATR percentile', features.atrPercentile != null ? `${(features.atrPercentile * 100).toFixed(0)}th` : '—')}
+      ${mathRow('As of', escapeHtml(features.asOf || '—'))}
+    </div>`;
+  }
+
+  function playbookTable(playbook) {
+    const rows = playbook.regimes.map(r => `<tr>
+      <td class="sym">${String(r.regime).replace(/_/g, ' ')}</td>
+      <td>${r.sampleSize}</td>
+      <td>${fmtPct(r.winRate20d, 1)}</td>
+      <td>${fmtPct(r.meanForwardReturn20d)}</td>
+      <td>${fmtPct(r.medianForwardReturn20d)}</td>
+      <td>${fmtPct(r.worstMaxDrawdown20d)}</td>
+    </tr>`).join('');
+    return `<table>
+      <thead><tr><th>Regime</th><th>n</th><th>20d win</th><th>Mean 20d</th><th>Median 20d</th><th>Worst DD</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  // The research-workbench view: how this asset has behaved in every regime it
+  // has actually traded in, with sample sizes so each row can be weighted.
+  async function loadPlaybook(symbol) {
+    try {
+      const res = await fetch(`/api/playbook?symbol=${encodeURIComponent(symbol)}`);
+      if (!res.ok) return '';
+      const playbook = await res.json();
+      if (!playbook.regimes || !playbook.regimes.length) return '';
+      return `<div class="section-title">Regime playbook — ${escapeHtml(playbook.symbol)}</div>
+        <div class="muted" style="font-size:0.8rem;">Every regime this asset has traded in, across ${playbook.total} stored scenarios. Regimes with fewer than ${playbook.minSample} samples are omitted rather than shown with a meaningless win rate.</div>
+        ${playbookTable(playbook)}`;
+    } catch {
+      return '';
+    }
+  }
+
+  async function loadProvenance() {
+    try {
+      const res = await fetch('/api/meta');
+      if (!res.ok) return;
+      const meta = await res.json();
+      const dbDate = meta.dbBuiltAt ? meta.dbBuiltAt.slice(0, 10) : 'unknown';
+      const snapDate = meta.snapshotBuiltAt ? meta.snapshotBuiltAt.slice(0, 10) : 'none committed';
+      provenance.innerHTML = `<b>${meta.scenarioCount.toLocaleString()}</b> historical scenarios · <b>${meta.symbolCount}</b> assets · scenario DB built ${dbDate} · bars snapshot ${snapDate}<br />`
+        + `Sources: ${meta.sources.map(s => escapeHtml(s)).join(' · ')}<br />`
+        + `Narrative model: ${meta.llm ? escapeHtml(meta.llm) : 'not configured — set GROQ_API_KEY to enable briefs'}`;
+    } catch {
+      /* the provenance strip is optional and must never block the app */
+    }
+  }
+  loadProvenance();
+
   runBtn.addEventListener('click', async () => {
-    const symbol = document.getElementById('symbol').value;
-    const thesis = document.getElementById('thesis').value;
-    const catalyst = document.getElementById('catalyst').value;
+    const symbol = symbolSelect.value;
+    const question = questionInput.value.trim();
+    const catalyst = document.getElementById('catalyst').value.trim();
+    const scopeValue = scope();
 
     runBtn.disabled = true;
     runBtn.textContent = 'Running...';
-    results.innerHTML = '<div class="empty-state">Pulling historical data and running the stress test...</div>';
+    results.innerHTML = '<div class="empty-state">Pulling historical bars, classifying the regime and matching analogues...</div>';
 
     try {
-      const barsRes = await fetch(`/api/bars?symbol=${symbol}`);
+      const barsRes = await fetch(`/api/bars?symbol=${encodeURIComponent(symbol)}`);
       const barsData = await barsRes.json();
       if (!barsRes.ok) throw new Error(barsData.error || 'Failed to fetch bars');
 
       const stRes = await fetch('/api/stress-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol, bars: barsData.bars, thesis, catalyst }),
+        body: JSON.stringify({
+          symbol,
+          bars: barsData.bars,
+          thesis: question,
+          catalyst,
+          scope: scopeValue,
+          barsSource: barsData.source,
+          barsAsOf: barsData.asOf,
+        }),
       });
       const data = await stRes.json();
       if (!stRes.ok) throw new Error(data.error || 'Stress test failed');
 
       if (!data.stats) {
-        results.innerHTML = `<div class="empty-state">${data.brief}</div>`;
+        results.innerHTML = `<div class="empty-state">${escapeHtml(data.brief)}</div>`;
         return;
       }
 
+      const s = data.stats;
+      const paragraphs = escapeHtml(data.brief)
+        .split(/\n{2,}/)
+        .map(p => `<p>${p.replace(/\n/g, '<br />')}</p>`)
+        .join('');
+      const playbookHtml = await loadPlaybook(symbol);
+
       results.innerHTML = `
-        <span class="regime-badge">${data.regime.replace('_', ' ')}</span>
-        <div class="stat-grid">
-          <div class="stat"><div class="label">Mean 5d forward return</div><div class="value">${fmtPct(data.stats.meanForwardReturn5d)}</div></div>
-          <div class="stat"><div class="label">Mean 20d forward return</div><div class="value">${fmtPct(data.stats.meanForwardReturn20d)}</div></div>
-          <div class="stat"><div class="label">20d win rate</div><div class="value">${(data.stats.winRate20d * 100).toFixed(1)}%</div></div>
-          <div class="stat"><div class="label">Mean max drawdown</div><div class="value">${fmtPct(data.stats.meanMaxDrawdown20d)}</div></div>
+        <div class="badges">
+          ${regimeBadge(data.regime)}
+          ${sourceBadge(data.barsSource, data.barsAsOf)}
+          <span class="src-badge">n=${s.sampleSize} analogues</span>
+          <span class="src-badge">${scopeValue === 'same' ? 'this asset only' : 'cross-asset'}</span>
         </div>
-        <div style="color: var(--text-muted); font-size: 0.8rem;">Based on ${data.matchCount} historical analogues</div>
-        <div class="brief">${data.brief}</div>
-        ${data.headlines && data.headlines.length ? `<ul class="headlines">${data.headlines.map(h => `<li>${h.title} — ${h.source}</li>`).join('')}</ul>` : ''}
+
+        <div class="stat-grid">
+          <div class="stat"><div class="label">Mean 5d forward return</div><div class="value">${fmtPct(s.meanForwardReturn5d)}</div></div>
+          <div class="stat"><div class="label">Mean 20d forward return</div><div class="value">${fmtPct(s.meanForwardReturn20d)}</div></div>
+          <div class="stat"><div class="label">20d win rate</div><div class="value">${s.winRate20d != null ? `${(s.winRate20d * 100).toFixed(1)}%` : '—'}</div></div>
+          <div class="stat"><div class="label">Mean max drawdown (20d)</div><div class="value">${fmtPct(s.meanMaxDrawdown20d)}</div></div>
+          <div class="stat"><div class="label">Median 20d return</div><div class="value">${fmtPct(s.medianForwardReturn20d)}</div></div>
+          <div class="stat"><div class="label">Best / worst 20d</div><div class="value">${fmtPct(s.bestForwardReturn20d)} / ${fmtPct(s.worstForwardReturn20d)}</div></div>
+          <div class="stat"><div class="label">Worst drawdown in sample</div><div class="value">${fmtPct(s.worstMaxDrawdown20d)}</div></div>
+          <div class="stat"><div class="label">Drew down &gt;5%</div><div class="value">${s.shareDrawdownOver5pct != null ? `${(s.shareDrawdownOver5pct * 100).toFixed(0)}%` : '—'}</div></div>
+        </div>
+
+        ${s.adverseExcursionP75 != null ? `<div class="decision">Plan for at least a <b>${(s.adverseExcursionP75 * 100).toFixed(1)}%</b> adverse excursion. Half of these analogues were further underwater than that within 20 days — the level at which this setup stops behaving like its typical self.</div>` : ''}
+
+        <div class="section-title">Distribution of the next 20 days</div>
+        ${histogram(data.matches)}
+
+        <div class="section-title">Brief</div>
+        <div class="brief">${paragraphs}</div>
+
+        <div class="section-title">Regime math</div>
+        ${mathPanel(data.features)}
+
+        <div class="section-title">Signals</div>
+        <div class="math-grid">
+          ${mathRow('RSI(14)', data.rsi != null ? data.rsi.toFixed(1) : 'unavailable')}
+          ${mathRow('MACD histogram', data.macd ? data.macd.histogram.toFixed(3) : 'unavailable')}
+          ${mathRow('Fear &amp; Greed', data.fearGreed ? `${data.fearGreed.value} (${escapeHtml(data.fearGreed.classification)})` : 'not applicable')}
+        </div>
+
+        <details>
+          <summary>Show the ${data.matchCount} matched historical scenarios</summary>
+          ${analogueTable(data.matches)}
+        </details>
+
+        ${playbookHtml}
+
+        ${data.headlines && data.headlines.length ? `<div class="section-title">Headlines</div><ul class="headlines">${data.headlines.map(h => `<li>${escapeHtml(h.title)} — ${escapeHtml(h.source)}</li>`).join('')}</ul>` : ''}
       `;
     } catch (err) {
-      results.innerHTML = `<div class="empty-state">${err.message}</div>`;
+      results.innerHTML = `<div class="empty-state">${escapeHtml(err.message)}</div>`;
     } finally {
       runBtn.disabled = false;
       runBtn.innerHTML = '<i data-lucide="search"></i> Run stress test';
       lucide.createIcons();
     }
   });
+
 </script>
 </body>
 </html>

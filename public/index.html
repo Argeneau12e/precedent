@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,368 +8,765 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"></script>
+<script>
+  // Paint the stored theme before first paint so there is no flash of the wrong
+  // theme. Falls back to the OS preference when nothing is stored yet.
+  (function () {
+    try {
+      var stored = localStorage.getItem('precedent.theme');
+      var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) { /* storage blocked: keep the dark default */ }
+  })();
+</script>
 <style>
-  :root {
-    --bg: #0a0908;
-    --panel: rgba(24, 20, 14, 0.62);
-    --panel-solid: #131110;
-    --inset: rgba(0, 0, 0, 0.32);
-    --border: rgba(212, 160, 23, 0.15);
-    --border-strong: rgba(212, 160, 23, 0.34);
-    --amber: #D4A017;
-    --gold: #F2C94C;
-    --text: #F3ECDB;
-    --muted: #9A8C6E;
-    --muted-dim: #6F6551;
-    --red: #E0654F;
-    --green: #6FBF73;
-    --radius: 16px;
-  }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    background-image: radial-gradient(ellipse 900px 480px at 22% -8%, rgba(212, 160, 23, 0.055), transparent 70%);
-    background-repeat: no-repeat;
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    -webkit-font-smoothing: antialiased;
-  }
-  .mono { font-family: 'IBM Plex Mono', monospace; }
+/* ============================================================================
+   LAYER 1 — PRIMITIVES. Raw values with no meaning attached. Components must
+   never reference these directly; only the semantic layer below may.
+   ========================================================================== */
+:root {
+  --gray-0:   #FFFFFF;
+  --gray-50:  #F8F8F9;
+  --gray-100: #EFEFF1;
+  --gray-200: #E2E2E6;
+  --gray-300: #CBCBD1;
+  --gray-400: #9C9CA4;
+  --gray-500: #75757D;
+  --gray-600: #56565E;
+  --gray-700: #3B3B42;
+  --gray-800: #242429;
+  --gray-850: #1B1B1F;
+  --gray-900: #131316;
+  --gray-950: #0B0B0D;
+  --gray-1000:#060607;
 
-  /* ---------- app shell ---------- */
-  .app { display: grid; grid-template-columns: 70px minmax(0, 1fr); min-height: 100vh; }
-  .rail {
-    position: sticky; top: 0; height: 100vh;
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-    padding: 16px 0; border-right: 1px solid var(--border);
-    background: rgba(13, 12, 10, 0.72);
-    backdrop-filter: blur(14px);
-  }
-  .rail-logo {
-    width: 36px; height: 36px; border-radius: 11px; margin-bottom: 12px;
-    background: var(--amber); color: #161207;
-    display: grid; place-items: center;
-    font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 600;
-    box-shadow: 0 6px 18px rgba(212, 160, 23, 0.22);
-  }
-  .rail-btn {
-    width: 40px; height: 40px; border-radius: 12px;
-    background: transparent; border: 1px solid transparent;
-    color: var(--muted-dim); cursor: pointer;
-    display: grid; place-items: center; padding: 0;
-    transition: color .16s ease, background .16s ease, border-color .16s ease;
-  }
-  .rail-btn svg { width: 18px; height: 18px; }
-  .rail-btn:hover, .rail-btn.active { color: var(--gold); background: rgba(212, 160, 23, 0.09); border-color: var(--border); }
-  .rail-spacer { flex: 1; }
+  --green-500: #35C07A;
+  --green-600: #1F9E5F;
+  --red-500:   #E5544B;
+  --red-600:   #C93F37;
+  --amber-500: #D9A24A;
+  --amber-600: #B9832F;
 
-  .shell { width: 100%; max-width: 1320px; margin: 0 auto; padding: 20px 28px 34px; min-width: 0; }
+  /* 4px spacing scale */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 56px;
 
-  /* ---------- top bar ---------- */
-  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 20px; flex-wrap: wrap; }
-  .brand { display: flex; align-items: baseline; gap: 12px; }
-  .brand h1 {
-    font-family: 'Cormorant Garamond', serif; font-size: 1.85rem; font-weight: 600;
-    letter-spacing: 0.16em; color: var(--gold); margin: 0; line-height: 1;
-  }
-  .brand .tagline { color: var(--muted); font-size: 0.8rem; }
-  .top-right { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-  .chip-status {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 6px 12px; border-radius: 999px;
-    border: 1px solid var(--border); background: rgba(0, 0, 0, 0.3);
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem;
-    color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
-  }
-  .chip-status b { color: var(--text); font-weight: 500; }
-  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
-  .dot.warn { background: var(--amber); }
-  .dot.idle { background: var(--muted-dim); }
+  --text-xs: 0.6875rem;
+  --text-sm: 0.75rem;
+  --text-md: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.625rem;
+  --text-3xl: 2.25rem;
 
-  /* ---------- hero ---------- */
-  .hero {
-    border: 1px solid var(--border); border-radius: 22px;
-    background: var(--panel); backdrop-filter: blur(16px);
-    padding: 26px 26px 22px;
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.025);
-  }
-  .hero-title {
-    font-family: 'Cormorant Garamond', serif; font-size: 2.05rem; font-weight: 600;
-    margin: 0 0 4px; letter-spacing: 0.02em; color: var(--text);
-  }
-  .hero-sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 18px; }
-  .qrow { display: flex; gap: 12px; align-items: stretch; }
-  #question {
-    flex: 1; min-width: 0; min-height: 78px; resize: vertical;
-    background: var(--inset); border: 1px solid var(--border); border-radius: 14px;
-    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.98rem;
-    padding: 15px 16px; line-height: 1.5;
-  }
-  #question::placeholder { color: var(--muted-dim); }
-  #question:focus, select:focus, input:focus { outline: none; border-color: var(--border-strong); }
-  .btn-run {
-    display: inline-flex; align-items: center; gap: 9px;
-    background: var(--amber); color: #161207; border: none; border-radius: 14px;
-    padding: 0 24px; font-size: 0.92rem; font-weight: 600; cursor: pointer;
-    white-space: nowrap; font-family: 'DM Sans', sans-serif;
-    transition: background .16s ease, transform .16s ease;
-  }
-  .btn-run svg { width: 17px; height: 17px; }
-  .btn-run:hover { background: var(--gold); }
-  .btn-run:active { transform: translateY(1px); }
-  .btn-run:disabled { opacity: 0.55; cursor: wait; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
-  .chip {
-    width: auto; margin: 0; padding: 7px 12px; border-radius: 999px;
-    background: rgba(0, 0, 0, 0.22); border: 1px solid var(--border);
-    color: var(--muted); font-family: 'DM Sans', sans-serif;
-    font-size: 0.78rem; cursor: pointer; transition: color .16s ease, border-color .16s ease;
-  }
-  .chip:hover { color: var(--gold); border-color: var(--border-strong); }
-  .controls {
-    display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
-    margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border);
-  }
-  .field { display: flex; flex-direction: column; gap: 6px; }
-  .field > label {
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem;
-    text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted);
-  }
-  .field select, .field input {
-    background: var(--inset); border: 1px solid var(--border); border-radius: 10px;
-    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.86rem;
-    padding: 10px 12px; min-width: 172px;
-  }
-  .detected { color: var(--gold); font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; margin-left: 6px; }
-  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-  .seg label {
-    display: inline-flex; align-items: center; gap: 7px; margin: 0;
-    padding: 10px 13px; font-size: 0.82rem; color: var(--muted); cursor: pointer;
-  }
-  .seg label input { display: none; }
-  .seg label.on { background: rgba(212, 160, 23, 0.14); color: var(--gold); }
-  .seg label + label { border-left: 1px solid var(--border); }
+  --radius-xs: 6px;  --radius-sm: 10px; --radius-md: 14px;
+  --radius-lg: 18px; --radius-xl: 24px; --radius-full: 999px;
 
-  /* ---------- card grid ---------- */
-  .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
-  .card {
-    grid-column: span 12;
-    border: 1px solid var(--border); border-radius: 18px;
-    background: var(--panel); backdrop-filter: blur(14px);
-    padding: 18px;
-    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.02);
-    min-width: 0;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.24);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.28);
+  --shadow-lg: 0 24px 60px rgb(0 0 0 / 0.36);
+
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 400ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  --font-display: 'Cormorant Garamond', georgia, serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', menlo, monospace;
+
+  --rail-width: 68px;
+  --ring-offset: 2px;
+  --ring-width: 2px;
+}
+
+/* ============================================================================
+   LAYER 2 — SEMANTIC. Purpose-based aliases. This is the only layer that
+   switches between themes; components never know which theme is active.
+   ========================================================================== */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: var(--gray-1000);
+  --bg-elevated: var(--gray-950);
+
+  --fg: var(--gray-50);
+  --fg-muted: var(--gray-400);
+  --fg-subtle: var(--gray-500);
+
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-strong: rgba(255, 255, 255, 0.075);
+  --surface-inset: rgba(0, 0, 0, 0.32);
+  --surface-solid: var(--gray-900);
+
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  /* Specular top highlight — the giveaway of real glass rather than a flat box */
+  --glass-highlight: rgba(255, 255, 255, 0.10);
+  --glass-sheen: rgba(255, 255, 255, 0.05);
+  --glass-blur: 26px;
+  --glass-saturate: 180%;
+
+  --primary: var(--gray-0);
+  --primary-fg: var(--gray-950);
+  --primary-hover: var(--gray-200);
+
+  --success: var(--green-500);
+  --danger: var(--red-500);
+  --warning: var(--amber-500);
+
+  --track: rgba(255, 255, 255, 0.08);
+  --hover: rgba(255, 255, 255, 0.05);
+  --chart-line: var(--gray-100);
+  --chart-area: rgba(255, 255, 255, 0.07);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: var(--gray-100);
+  --bg-elevated: var(--gray-50);
+
+  --fg: var(--gray-900);
+  --fg-muted: var(--gray-500);
+  --fg-subtle: var(--gray-400);
+
+  --surface: rgba(255, 255, 255, 0.66);
+  --surface-strong: rgba(255, 255, 255, 0.86);
+  --surface-inset: rgba(255, 255, 255, 0.6);
+  --surface-solid: var(--gray-0);
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.16);
+
+  --glass-highlight: rgba(255, 255, 255, 0.95);
+  --glass-sheen: rgba(255, 255, 255, 0.55);
+  --glass-blur: 26px;
+  --glass-saturate: 170%;
+
+  --primary: var(--gray-900);
+  --primary-fg: var(--gray-0);
+  --primary-hover: var(--gray-700);
+
+  --success: var(--green-600);
+  --danger: var(--red-600);
+  --warning: var(--amber-600);
+
+  --track: rgba(0, 0, 0, 0.07);
+  --hover: rgba(0, 0, 0, 0.035);
+  --chart-line: var(--gray-800);
+  --chart-area: rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================================================
+   LAYER 3 — COMPONENT tokens. Component rules below reference these, never the
+   primitives, so a theme change is a single edit in the semantic layer.
+   ========================================================================== */
+:root {
+  --card-bg: var(--surface);
+  --card-border: var(--border);
+  --card-padding: var(--space-5);
+  --card-radius: var(--radius-lg);
+  --card-shadow: var(--shadow-md);
+
+  --btn-bg: var(--primary);
+  --btn-fg: var(--primary-fg);
+  --btn-hover-bg: var(--primary-hover);
+  --btn-radius: var(--radius-md);
+  --btn-padding-x: var(--space-5);
+  --btn-padding-y: var(--space-3);
+
+  --input-bg: var(--surface-inset);
+  --input-border: var(--border);
+  --input-radius: var(--radius-md);
+  --input-padding: var(--space-3) var(--space-4);
+
+  --focus-ring: 0 0 0 var(--ring-offset) var(--bg), 0 0 0 calc(var(--ring-offset) + var(--ring-width)) var(--fg);
+
+  --meter-height: 6px;
+  --badge-radius: var(--radius-full);
+  --badge-padding: var(--space-1) var(--space-3);
+}
+
+/* ============================================================================
+   BASE
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--duration-normal) var(--ease), color var(--duration-normal) var(--ease);
+}
+
+/* Ambient light behind the glass — sells the depth with no imagery at all. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(720px 420px at 12% -6%, var(--glass-sheen), transparent 68%),
+    radial-gradient(680px 420px at 92% 4%, var(--glass-sheen), transparent 70%);
+}
+
+h1, h2, h3 { margin: 0; font-weight: 600; }
+p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+ul { margin: 0; padding: 0; list-style: none; }
+table { border-collapse: collapse; }
+svg { display: block; }
+
+/* One visible ring for every interactive element, and never on a mouse click. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.skip-link {
+  position: absolute; left: -9999px; top: var(--space-3); z-index: 100;
+  padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm);
+  background: var(--primary); color: var(--primary-fg);
+  font-size: var(--text-md); text-decoration: none;
+}
+.skip-link:focus { left: var(--space-3); }
+
+/* ============================================================================
+   GLASS — the core surface treatment
+   ========================================================================== */
+.glass {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    var(--shadow-md);
+}
+
+/* Pointer-tracked specular highlight. --mx/--my come from JS; with no pointer
+   movement it degrades to a calm, plain surface. */
+.glass-spec::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--duration-slow) var(--ease);
+  background: radial-gradient(440px 260px at var(--mx, 50%) var(--my, 0%), var(--glass-highlight), transparent 62%);
+}
+.glass-spec:hover::after { opacity: 0.8; }
+
+/* ============================================================================
+   ICONS — Lucide, animated with CSS only. Lucide ships stroke-only SVGs, so
+   the geometry itself can be drawn and re-drawn without a motion library.
+   ========================================================================== */
+.ico svg, .icon-btn svg, .rail-btn svg, .btn svg, .chip svg, .steps svg {
+  width: var(--icon-size, 18px);
+  height: var(--icon-size, 18px);
+  stroke-width: 1.75;
+}
+
+@keyframes icon-draw {
+  from { stroke-dashoffset: var(--icon-dash, 60); }
+  to   { stroke-dashoffset: 0; }
+}
+
+.icon-anim svg :is(path, circle, line, polyline, rect, polygon) {
+  stroke-dasharray: var(--icon-dash, 60);
+  animation: icon-draw var(--duration-slow) var(--ease-out) both;
+}
+.icon-anim svg { transition: transform var(--duration-normal) var(--ease-out); }
+.icon-anim:hover svg, .icon-anim:focus-visible svg { transform: translateY(-1px) scale(1.07); }
+.icon-anim:hover svg :is(path, circle, line, polyline, rect, polygon), .icon-anim:focus-visible svg :is(path, circle, line, polyline, rect, polygon) {
+  animation: icon-draw var(--duration-slow) var(--ease-out);
+}
+
+.icon-btn {
+  display: inline-grid; place-items: center;
+  width: 36px; height: 36px; padding: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--fg-muted); cursor: pointer;
+  transition: color var(--duration-fast) var(--ease), background-color var(--duration-fast) var(--ease),
+              border-color var(--duration-fast) var(--ease), transform var(--duration-normal) var(--ease-out);
+}
+.icon-btn:hover { color: var(--fg); border-color: var(--border-strong); background: var(--surface-strong); }
+.icon-btn:active { transform: scale(0.96); }
+
+/* ============================================================================
+   SHELL — rail and top bar
+   ========================================================================== */
+.app { position: relative; z-index: 1; display: grid; grid-template-columns: var(--rail-width) minmax(0, 1fr); min-height: 100vh; }
+
+.rail {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  padding: var(--space-5) 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+.rail-logo {
+  width: 34px; height: 34px; margin-bottom: var(--space-4);
+  display: grid; place-items: center;
+  background: var(--primary); color: var(--primary-fg);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+.rail-btn {
+  width: 38px; height: 38px; padding: 0; position: relative;
+  display: grid; place-items: center;
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm);
+  color: var(--fg-subtle); cursor: pointer;
+  transition: color var(--duration-fast) var(--ease), background-color var(--duration-fast) var(--ease),
+              border-color var(--duration-fast) var(--ease);
+}
+.rail-btn:hover { color: var(--fg); background: var(--hover); border-color: var(--border); }
+.rail-btn.active { color: var(--fg); background: var(--surface-strong); border-color: var(--border-strong); }
+.rail-btn::after {
+  content: attr(data-label);
+  position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%) translateX(-4px);
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface-solid); border: 1px solid var(--border);
+  border-radius: var(--radius-xs); color: var(--fg);
+  font-size: var(--text-sm); white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity var(--duration-fast) var(--ease), transform var(--duration-fast) var(--ease-out);
+  box-shadow: var(--shadow-md); z-index: 30;
+}
+.rail-btn:hover::after, .rail-btn:focus-visible::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+.rail-spacer { flex: 1; }
+
+.shell { width: 100%; max-width: 1360px; margin: 0 auto; padding: var(--space-5) var(--space-8) var(--space-12); min-width: 0; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-5);
+  flex-wrap: wrap; margin-bottom: var(--space-5);
+}
+.brand { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+.brand h1 { font-family: var(--font-display); font-size: var(--text-2xl); letter-spacing: 0.18em; line-height: 1; }
+.brand .tagline { color: var(--fg-muted); font-size: var(--text-md); }
+.top-right { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+.chip-status {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--badge-radius);
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  color: var(--fg-muted); letter-spacing: 0.04em; text-transform: uppercase;
+}
+.chip-status b { color: var(--fg); font-weight: 500; }
+.dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--fg-subtle); flex: none; }
+.dot.ok { background: var(--success); }
+.dot.warn { background: var(--warning); }
+
+/* ============================================================================
+   HERO — the ask panel
+   ========================================================================== */
+.hero { padding: var(--space-8); }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--fg-muted); margin-bottom: var(--space-4);
+}
+.hero-title { font-family: var(--font-display); font-size: var(--text-3xl); letter-spacing: 0.01em; margin-bottom: var(--space-2); }
+.hero-sub { color: var(--fg-muted); font-size: var(--text-lg); max-width: 62ch; margin-bottom: var(--space-6); }
+
+.qrow { display: flex; gap: var(--space-3); align-items: stretch; }
+#question {
+  flex: 1; min-width: 0; min-height: 84px; resize: vertical;
+  padding: var(--input-padding);
+  background: var(--input-bg); border: 1px solid var(--input-border);
+  border-radius: var(--input-radius); color: var(--fg);
+  font-size: var(--text-lg); line-height: 1.5;
+  transition: border-color var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease);
+}
+#question::placeholder { color: var(--fg-subtle); }
+#question:focus { outline: none; border-color: var(--border-strong); box-shadow: var(--focus-ring); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  background: var(--btn-bg); color: var(--btn-fg);
+  border: none; border-radius: var(--btn-radius);
+  font-size: var(--text-base); font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease), transform var(--duration-normal) var(--ease-out),
+              opacity var(--duration-fast) var(--ease);
+}
+.btn:hover { background: var(--btn-hover-bg); }
+.btn:active { transform: translateY(1px); }
+.btn[disabled] { opacity: 0.5; pointer-events: none; }
+.btn-primary { --icon-size: 17px; }
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--fg-muted); font-family: var(--font-mono); font-size: var(--text-xs);
+  letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+  transition: color var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease),
+              background-color var(--duration-fast) var(--ease);
+}
+.btn-ghost:hover { color: var(--fg); border-color: var(--border-strong); background: var(--surface-strong); }
+.btn-ghost[disabled] { opacity: 0.5; pointer-events: none; }
+
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--badge-radius);
+  color: var(--fg-muted); font-size: var(--text-md); cursor: pointer;
+  transition: color var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease),
+              background-color var(--duration-fast) var(--ease);
+}
+.chip:hover { color: var(--fg); border-color: var(--border-strong); background: var(--surface-strong); }
+
+.controls {
+  display: flex; flex-wrap: wrap; gap: var(--space-5); align-items: flex-end;
+  margin-top: var(--space-6); padding-top: var(--space-6); border-top: 1px solid var(--border);
+}
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.field > label {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--fg-muted);
+}
+.field select, .field input {
+  padding: var(--space-2) var(--space-3);
+  background: var(--input-bg); border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm); color: var(--fg); font-size: var(--text-base); min-width: 172px;
+  transition: border-color var(--duration-fast) var(--ease);
+}
+.field select:focus, .field input:focus { outline: none; border-color: var(--border-strong); }
+.detected { color: var(--fg); font-family: var(--font-mono); font-size: var(--text-xs); margin-left: var(--space-2); }
+
+.seg { display: inline-flex; padding: 3px; gap: 3px; background: var(--surface-inset); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.seg label {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius-xs);
+  font-size: var(--text-base); color: var(--fg-muted); cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+}
+.seg label input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:hover { color: var(--fg); }
+.seg label.on { background: var(--surface-strong); color: var(--fg); box-shadow: var(--shadow-sm); }
+
+.history { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-top: var(--space-5); }
+.history-label { font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--fg-subtle); }
+.history-chip {
+  max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: var(--space-1) var(--space-3);
+  background: transparent; border: 1px dashed var(--border-strong); border-radius: var(--badge-radius);
+  color: var(--fg-muted); font-size: var(--text-sm); cursor: pointer;
+  transition: color var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease);
+}
+.history-chip:hover { color: var(--fg); border-style: solid; }
+
+/* ============================================================================
+   CARDS
+   ========================================================================== */
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
+.card {
+  grid-column: span 12;
+  padding: var(--card-padding);
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--card-shadow);
+  min-width: 0;
+}
+.c3 { grid-column: span 3; } .c4 { grid-column: span 4; }
+.c5 { grid-column: span 5; } .c6 { grid-column: span 6; }
+.c7 { grid-column: span 7; } .c8 { grid-column: span 8; }
+.c12 { grid-column: span 12; }
+
+.card-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+.card-ico {
+  width: 30px; height: 30px; flex: none; display: grid; place-items: center;
+  background: var(--surface-strong); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--fg-muted);
+  --icon-size: 15px;
+}
+.card-title {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted);
+}
+.card-head .spacer { flex: 1; }
+.card-note { font-size: var(--text-md); color: var(--fg-muted); line-height: 1.6; }
+.card-big { font-family: var(--font-mono); font-size: var(--text-2xl); letter-spacing: -0.01em; }
+
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.badge {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--badge-padding);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--badge-radius);
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em;
+}
+.badge-regime { color: var(--fg); border-color: var(--border-strong); background: var(--surface-strong); font-size: var(--text-sm); }
+.badge-warn { color: var(--warning); border-color: var(--warning); }
+
+.kv { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); font-size: var(--text-base); }
+.kv:last-child { border-bottom: none; }
+.kv .k { color: var(--fg-muted); }
+.kv .v { font-family: var(--font-mono); }
+.kv-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-6); }
+
+.positive { color: var(--success); }
+.negative { color: var(--danger); }
+
+/* The one callout that changes behaviour: keep it visually distinct but quiet. */
+.decision {
+  margin-top: var(--space-4); padding: var(--space-4);
+  background: var(--surface-strong); border: 1px solid var(--border);
+  border-left: 2px solid var(--fg); border-radius: var(--radius-sm);
+  font-size: var(--text-base); line-height: 1.6;
+}
+.decision b { font-family: var(--font-mono); font-weight: 500; color: var(--fg); }
+
+.brief { font-size: var(--text-lg); line-height: 1.75; color: var(--fg); }
+.brief p { margin-bottom: var(--space-4); }
+.brief p:last-child { margin-bottom: 0; }
+
+.headlines li { padding: var(--space-3) 0; border-bottom: 1px solid var(--border); font-size: var(--text-base); line-height: 1.5; }
+.headlines li:last-child { border-bottom: none; }
+.headlines .src { display: block; margin-top: var(--space-1); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-subtle); }
+
+.empty-state { padding: var(--space-12) var(--space-6); text-align: center; color: var(--fg-muted); font-size: var(--text-lg); }
+
+/* ---------- run progress ---------- */
+.steps { display: grid; gap: var(--space-3); }
+.steps li { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: var(--space-3); color: var(--fg-subtle); font-size: var(--text-base); }
+.steps li .step-note { grid-column: 2; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-subtle); }
+.steps li.active { color: var(--fg); }
+.steps li.done { color: var(--fg-muted); }
+.steps .step-mark { width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--radius-full); --icon-size: 12px; }
+.steps li.done .step-mark { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.steps li.active .step-mark { border-color: var(--fg); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1.1s linear infinite; --icon-size: 12px; }
+.elapsed { margin-top: var(--space-4); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-subtle); }
+
+/* ---------- skeleton ---------- */
+@keyframes shimmer { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+.skeleton { border-radius: var(--radius-sm); background: var(--surface-strong); animation: shimmer 1.6s var(--ease) infinite; }
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: var(--space-6); transform: translate(-50%, 12px);
+  z-index: 60; padding: var(--space-3) var(--space-5);
+  background: var(--surface-solid); border: 1px solid var(--border-strong);
+  border-radius: var(--badge-radius); box-shadow: var(--shadow-lg);
+  font-size: var(--text-md); color: var(--fg);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--duration-normal) var(--ease), transform var(--duration-normal) var(--ease-out);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+.provenance { margin-top: var(--space-5); font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.9; color: var(--fg-subtle); }
+.provenance b { color: var(--fg-muted); font-weight: 500; }
+
+/* ============================================================================
+   DATA VIZ — one ink for structure, colour only for direction
+   ========================================================================== */
+.ring-box { position: relative; display: grid; place-items: center; width: 128px; height: 128px; flex: none; }
+.ring { width: 128px; height: 128px; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 8; stroke-linecap: round; }
+.ring .track { stroke: var(--track); }
+.ring-fill { stroke: var(--fg); transition: stroke-dashoffset 900ms var(--ease-out); }
+.ring-fill.pos { stroke: var(--success); }
+.ring-fill.neg { stroke: var(--danger); }
+.ring-val { position: absolute; text-align: center; }
+.ring-val b { display: block; font-family: var(--font-mono); font-size: var(--text-2xl); font-weight: 500; line-height: 1.1; }
+.ring-val span { font-size: var(--text-xs); color: var(--fg-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+.spark { width: 100%; height: 108px; display: block; }
+.spark .area { fill: var(--chart-area); }
+.spark .line { fill: none; stroke: var(--chart-line); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.spark .ma { fill: none; stroke: var(--fg-subtle); stroke-width: 1; stroke-dasharray: 3 4; }
+
+.bars { display: flex; align-items: flex-end; gap: var(--space-2); height: 132px; }
+.bars-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: var(--space-2); }
+.bars-val { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-muted); }
+.bars-bar { width: 100%; min-height: 3px; border-radius: var(--radius-xs); background: var(--surface-strong); transition: height var(--duration-slow) var(--ease-out); }
+.bars-bar.pos { background: var(--success); opacity: 0.75; }
+.bars-bar.neg { background: var(--danger); opacity: 0.75; }
+.bars-axis { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.bars-axis span { flex: 1; text-align: center; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-subtle); }
+
+.meter + .meter { margin-top: var(--space-3); }
+.meter-top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-2); }
+.meter-top .k { font-size: var(--text-md); color: var(--fg-muted); }
+.meter-top .v { font-family: var(--font-mono); font-size: var(--text-base); }
+.meter-track { height: var(--meter-height); border-radius: var(--radius-full); background: var(--track); overflow: hidden; }
+.meter-fill { height: 100%; border-radius: var(--radius-full); background: var(--fg); transition: width 700ms var(--ease-out); }
+.meter-fill.pos { background: var(--success); }
+.meter-fill.neg { background: var(--danger); }
+.meter-fill.warn { background: var(--warning); }
+
+/* ---------- tables ---------- */
+.table-wrap { overflow-x: auto; margin: 0 calc(var(--card-padding) * -1); padding: 0 var(--card-padding); }
+th {
+  padding: var(--space-2) var(--space-3);
+  text-align: left; font-family: var(--font-mono); font-size: var(--text-xs);
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted);
+  border-bottom: 1px solid var(--border-strong); white-space: nowrap; font-weight: 500;
+}
+td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: var(--text-md); white-space: nowrap; }
+td.sym { font-family: var(--font-body); }
+tbody tr { transition: background-color var(--duration-fast) var(--ease); }
+tbody tr:hover { background: var(--hover); }
+
+/* ---------- playbook rows ---------- */
+.pb-row {
+  display: grid; grid-template-columns: minmax(96px, 132px) 44px minmax(90px, 1fr) 84px 84px;
+  gap: var(--space-4); align-items: center;
+  padding: var(--space-3) 0; border-bottom: 1px solid var(--border);
+}
+.pb-row:last-child { border-bottom: none; }
+.pb-cols { font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-subtle); }
+.pb-name { font-size: var(--text-base); }
+.pb-n { font-family: var(--font-mono); font-size: var(--text-md); color: var(--fg-muted); }
+.pb-num { font-family: var(--font-mono); font-size: var(--text-base); text-align: right; }
+.wr-track { height: 6px; border-radius: var(--radius-full); background: var(--track); position: relative; overflow: hidden; }
+.wr-fill { position: absolute; inset: 0 auto 0 0; border-radius: var(--radius-full); background: var(--fg); }
+.wr-fill.neg { background: var(--danger); opacity: 0.85; }
+.wr-fill.pos { background: var(--success); opacity: 0.85; }
+
+/* ============================================================================
+   RESPONSIVE
+   ========================================================================== */
+.mobile-nav { display: none; }
+
+@media (max-width: 1180px) {
+  .c3 { grid-column: span 6; }
+}
+@media (max-width: 980px) {
+  .c3, .c4, .c5, .c6, .c7, .c8 { grid-column: span 12; }
+  .kv-2col { grid-template-columns: 1fr; }
+  .pb-row { grid-template-columns: minmax(88px, 1fr) 40px minmax(80px, 1.4fr) 78px; }
+  .pb-worst { display: none; }
+}
+@media (max-width: 720px) {
+  .app { grid-template-columns: 1fr; }
+  .rail { display: none; }
+  .shell { padding: var(--space-4) var(--space-4) 104px; }
+  .hero { padding: var(--space-5); }
+  .hero-title { font-size: var(--text-2xl); }
+  .hero-sub { font-size: var(--text-base); }
+  .qrow { flex-direction: column; }
+  .btn-primary { padding: var(--space-4); }
+  .brand .tagline { display: none; }
+  .ring-box, .ring { width: 112px; height: 112px; }
+
+  /* The rail becomes a floating glass dock within thumb reach. */
+  .mobile-nav {
+    display: flex; align-items: center; justify-content: space-around; gap: var(--space-1);
+    position: fixed; left: var(--space-4); right: var(--space-4); bottom: var(--space-4);
+    z-index: 50; padding: var(--space-2);
+    background: var(--surface-solid); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-xl); box-shadow: var(--shadow-lg);
   }
-  .c3 { grid-column: span 3; } .c4 { grid-column: span 4; }
-  .c5 { grid-column: span 5; } .c6 { grid-column: span 6; }
-  .c7 { grid-column: span 7; } .c8 { grid-column: span 8; }
-  .c12 { grid-column: span 12; }
-  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
-  .card-ico {
-    width: 30px; height: 30px; border-radius: 9px; flex: none;
-    background: rgba(212, 160, 23, 0.11); color: var(--gold);
-    display: grid; place-items: center;
-  }
-  .card-ico svg { width: 15px; height: 15px; }
-  .card-title {
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem;
-    letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted);
-  }
-  .card-head .spacer { flex: 1; }
-  .card-note { font-size: 0.74rem; color: var(--muted); line-height: 1.6; }
-  .card-big { font-family: 'IBM Plex Mono', monospace; font-size: 1.55rem; letter-spacing: -0.01em; }
-  .empty-state { color: var(--muted); text-align: center; padding: 54px 24px; font-size: 0.9rem; }
-  .positive { color: var(--green); }
-  .negative { color: var(--red); }
-  .muted { color: var(--muted); }
+  .mobile-nav .rail-btn::after { display: none; }
+}
 
-  /* ---------- data viz: ring gauge ---------- */
-  .ring-box { position: relative; display: grid; place-items: center; width: 132px; height: 132px; flex: none; }
-  .ring { width: 132px; height: 132px; transform: rotate(-90deg); }
-  .ring circle { fill: none; stroke-width: 9; stroke-linecap: round; }
-  .ring .track { stroke: rgba(255, 255, 255, 0.07); }
-  .ring-fill { transition: stroke-dashoffset .9s cubic-bezier(.22,.61,.36,1); }
-  .ring-val { position: absolute; text-align: center; }
-  .ring-val b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 1.45rem; font-weight: 500; }
-  .ring-val span { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; }
+@media print {
+  .rail, .mobile-nav, .top-right, .btn, .chips, .history { display: none !important; }
+  body::before { display: none; }
+  .card { break-inside: avoid; box-shadow: none; }
+}
 
-  /* ---------- data viz: sparkline ---------- */
-  .spark { width: 100%; height: 104px; display: block; }
-  .spark .area { fill: rgba(212, 160, 23, 0.09); }
-  .spark .line { fill: none; stroke: var(--amber); stroke-width: 1.7; stroke-linejoin: round; }
-  .spark .ma { fill: none; stroke: rgba(243, 236, 219, 0.26); stroke-width: 1; stroke-dasharray: 4 4; }
 
-  /* ---------- data viz: bar chart ---------- */
-  .bars { display: flex; align-items: flex-end; gap: 9px; height: 132px; }
-  .bars-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 7px; }
-  .bars-val { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--muted); }
-  .bars-bar { width: 100%; border-radius: 8px; background: rgba(212, 160, 23, 0.42); min-height: 3px; transition: height .6s ease; }
-  .bars-bar.g { background: rgba(111, 191, 115, 0.5); }
-  .bars-bar.r { background: rgba(224, 101, 79, 0.5); }
-  .bars-axis { display: flex; gap: 9px; margin-top: 9px; }
-  .bars-axis span {
-    flex: 1; text-align: center; font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.62rem; color: var(--muted-dim);
-  }
 
-  /* ---------- data viz: meters ---------- */
-  .meter + .meter { margin-top: 13px; }
-  .meter-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 10px; }
-  .meter-top .k { font-size: 0.78rem; color: var(--muted); }
-  .meter-top .v { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
-  .meter-track { height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
-  .meter-fill { height: 100%; border-radius: 999px; background: var(--amber); transition: width .7s cubic-bezier(.22,.61,.36,1); }
-  .meter-fill.g { background: var(--green); }
-  .meter-fill.r { background: var(--red); }
 
-  /* ---------- key/value rows ---------- */
-  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid rgba(212, 160, 23, 0.08); font-size: 0.82rem; }
-  .kv:last-child { border-bottom: none; }
-  .kv .k { color: var(--muted); }
-  .kv .v { font-family: 'IBM Plex Mono', monospace; }
-  .kv-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
-
-  /* ---------- badges ---------- */
-  .badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .badge {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 6px 12px; border-radius: 999px;
-    border: 1px solid var(--border); background: rgba(0, 0, 0, 0.25);
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.66rem;
-    color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
-  }
-  .badge.regime { color: var(--gold); border-color: var(--border-strong); background: rgba(212, 160, 23, 0.1); font-size: 0.72rem; }
-  .badge.warn { color: var(--amber); border-color: rgba(212, 160, 23, 0.4); }
-
-  /* ---------- decision callout ---------- */
-  .decision {
-    margin-top: 15px; padding: 13px 15px;
-    border-left: 2px solid var(--amber); border-radius: 0 10px 10px 0;
-    background: rgba(212, 160, 23, 0.06);
-    font-size: 0.86rem; line-height: 1.6;
-  }
-  .decision b { color: var(--gold); font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
-
-  /* ---------- brief ---------- */
-  .brief { font-size: 0.93rem; line-height: 1.72; color: #E7DFCC; }
-  .brief p { margin: 0 0 13px; }
-  .brief p:last-child { margin-bottom: 0; }
-
-  /* ---------- tables ---------- */
-  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  th {
-    text-align: left; font-weight: 500; color: var(--muted);
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem;
-    text-transform: uppercase; letter-spacing: 0.07em;
-    padding: 8px 10px; border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-  }
-  td { padding: 8px 10px; border-bottom: 1px solid rgba(212, 160, 23, 0.07); font-family: 'IBM Plex Mono', monospace; white-space: nowrap; }
-  tbody tr:hover td { background: rgba(212, 160, 23, 0.035); }
-  td.sym { font-family: 'DM Sans', sans-serif; }
-  .table-wrap { overflow-x: auto; }
-
-  /* ---------- playbook rows ---------- */
-  .pb-row {
-    display: grid; grid-template-columns: 130px 46px 1fr 92px 92px;
-    gap: 14px; align-items: center; padding: 11px 0;
-    border-bottom: 1px solid rgba(212, 160, 23, 0.08);
-  }
-  .pb-row:last-child { border-bottom: none; }
-  .pb-name { font-size: 0.84rem; }
-  .pb-n { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: var(--muted); }
-  .pb-num { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; text-align: right; }
-  .wr-track { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); position: relative; overflow: hidden; }
-  .wr-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--green); }
-  .wr-fill.r { background: var(--red); }
-  .pb-cols { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--muted-dim); text-transform: uppercase; letter-spacing: 0.07em; }
-
-  /* ---------- headlines ---------- */
-  .headlines { list-style: none; margin: 0; padding: 0; }
-  .headlines li { padding: 9px 0; border-bottom: 1px solid rgba(212, 160, 23, 0.07); font-size: 0.83rem; line-height: 1.5; }
-  .headlines li:last-child { border-bottom: none; }
-  .headlines .src { display: block; color: var(--muted-dim); font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; margin-top: 3px; }
-
-  /* ---------- actions + footer ---------- */
-  .actions { display: flex; gap: 9px; flex-wrap: wrap; }
-  .btn-ghost {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border); border-radius: 10px;
-    color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem;
-    padding: 8px 12px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;
-  }
-  .btn-ghost:hover { color: var(--gold); border-color: var(--border-strong); }
-  .btn-ghost svg { width: 13px; height: 13px; }
-  .provenance {
-    margin-top: 18px; color: var(--muted-dim);
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; line-height: 1.8;
-  }
-  .provenance b { color: var(--muted); font-weight: 500; }
-
-  @media (max-width: 1180px) { .c3 { grid-column: span 6; } }
-  @media (max-width: 980px) {
-    .c3, .c4, .c5, .c6, .c7, .c8 { grid-column: span 12; }
-    .kv-2col { grid-template-columns: 1fr; }
-    .pb-row { grid-template-columns: 112px 38px 1fr 84px; }
-    .pb-row .pb-worst { display: none; }
-  }
-  @media (max-width: 720px) {
-    .app { grid-template-columns: 1fr; }
-    .rail { display: none; }
-    .shell { padding: 16px 16px 28px; }
-    .hero { padding: 20px 18px; }
-    .hero-title { font-size: 1.6rem; }
-    .qrow { flex-direction: column; }
-    .btn-run { padding: 14px 20px; justify-content: center; }
-    .brand h1 { font-size: 1.5rem; }
-    .ring-box { width: 112px; height: 112px; }
-    .ring { width: 112px; height: 112px; }
-  }
 
 </style>
 </head>
 <body>
+<a class="skip-link" href="#results">Skip to results</a>
 <div class="app">
-  <aside class="rail">
-    <div class="rail-logo">P</div>
-    <button class="rail-btn active" data-goto="#hero" title="Ask a question"><i data-lucide="crosshair"></i></button>
-    <button class="rail-btn" data-goto="#card-returns" title="Forward returns"><i data-lucide="trending-up"></i></button>
-    <button class="rail-btn" data-goto="#card-risk" title="Drawdown risk"><i data-lucide="shield"></i></button>
-    <button class="rail-btn" data-goto="#card-brief" title="Brief"><i data-lucide="book-open"></i></button>
-    <button class="rail-btn" data-goto="#card-analogues" title="Matched scenarios"><i data-lucide="table-2"></i></button>
-    <button class="rail-btn" data-goto="#card-playbook" title="Regime playbook"><i data-lucide="layers"></i></button>
+  <aside class="rail" aria-label="Section navigation">
+    <div class="rail-logo" aria-hidden="true">P</div>
+    <button type="button" class="rail-btn icon-anim active" data-goto="#hero" data-label="Ask" aria-label="Ask a question">
+      <i data-lucide="crosshair"></i>
+    </button>
+    <button type="button" class="rail-btn icon-anim" data-goto="#card-returns" data-label="Forward returns" aria-label="Forward returns">
+      <i data-lucide="trending-up"></i>
+    </button>
+    <button type="button" class="rail-btn icon-anim" data-goto="#card-risk" data-label="Drawdown risk" aria-label="Drawdown risk">
+      <i data-lucide="shield"></i>
+    </button>
+    <button type="button" class="rail-btn icon-anim" data-goto="#card-brief" data-label="Brief" aria-label="Brief">
+      <i data-lucide="book-open"></i>
+    </button>
+    <button type="button" class="rail-btn icon-anim" data-goto="#card-analogues" data-label="Matched scenarios" aria-label="Matched scenarios">
+      <i data-lucide="table-2"></i>
+    </button>
+    <button type="button" class="rail-btn icon-anim" data-goto="#card-playbook" data-label="Regime playbook" aria-label="Regime playbook">
+      <i data-lucide="layers"></i>
+    </button>
     <div class="rail-spacer"></div>
-    <button class="rail-btn" data-goto="#provenance" title="Data sources"><i data-lucide="database"></i></button>
+    <button type="button" class="rail-btn icon-anim" data-goto="#provenance" data-label="Data sources" aria-label="Data sources">
+      <i data-lucide="database"></i>
+    </button>
+    <button type="button" class="rail-btn icon-anim" id="themeBtn" data-label="Switch theme" aria-label="Switch colour theme">
+      <i data-lucide="sun"></i>
+    </button>
   </aside>
 
   <div class="shell">
-    <div class="topbar">
+    <header class="topbar">
       <div class="brand">
         <h1>PRECEDENT</h1>
         <span class="tagline">See what happened last time this setup showed up.</span>
       </div>
       <div class="top-right">
-        <span class="chip-status"><span class="dot idle"></span> <b id="scenarioCount">—</b> scenarios</span>
-        <span class="chip-status"><span class="dot idle"></span> feed <b id="feedState">idle</b></span>
-        <span class="chip-status"><span class="dot idle"></span> <b id="modelName">model</b></span>
+        <span class="chip-status"><span class="dot" id="feedDot"></span> feed <b id="feedState">idle</b></span>
+        <span class="chip-status"><b id="scenarioCount">—</b> scenarios</span>
+        <span class="chip-status"><b id="modelName">model</b></span>
+        <button type="button" class="icon-btn icon-anim" id="themeBtnTop" aria-label="Switch colour theme">
+          <i data-lucide="sun"></i>
+        </button>
       </div>
-    </div>
+    </header>
 
-    <section class="hero" id="hero">
+    <section class="hero glass glass-spec" id="hero">
+      <span class="eyebrow"><i data-lucide="line-chart" style="--icon-size:14px"></i> Pre-trade stress test</span>
       <h2 class="hero-title">What do you need?</h2>
       <p class="hero-sub">Ask in plain English. Precedent classifies today's regime, retrieves the historical setups that looked like this one, and shows what actually happened next.</p>
+
       <div class="qrow">
+        <label class="visually-hidden" for="question">Your question</label>
         <textarea id="question" placeholder="e.g. Should I open a long in NVDA into earnings? I think the breakout continues."></textarea>
-        <button type="button" class="btn-run" id="runBtn"><i data-lucide="search"></i> Stress test</button>
+        <button type="button" class="btn btn-primary" id="runBtn">
+          <i data-lucide="search" class="icon-anim"></i> Stress test
+        </button>
       </div>
+
       <div class="chips">
-        <button type="button" class="chip" data-example="Should I open a long in NVDA into earnings? I think the breakout continues.">NVDA into earnings</button>
-        <button type="button" class="chip" data-example="Is Bitcoin's bull run durable, or is it running out of steam?">Is BTC's run durable?</button>
-        <button type="button" class="chip" data-example="Tesla is breaking out on high volume. Is this a real move or a trap?">TSLA breakout trap?</button>
-        <button type="button" class="chip" data-example="The S&P is at highs. How much drawdown should I expect if I buy here?">SPY at highs</button>
+        <button type="button" class="chip icon-anim" data-example="Should I open a long in NVDA into earnings? I think the breakout continues."><i data-lucide="sparkle"></i> NVDA into earnings</button>
+        <button type="button" class="chip icon-anim" data-example="Is Bitcoin's bull run durable, or is it running out of steam?"><i data-lucide="bitcoin"></i> Is BTC's run durable?</button>
+        <button type="button" class="chip icon-anim" data-example="Tesla is breaking out on high volume. Is this a real move or a trap?"><i data-lucide="zap"></i> TSLA breakout trap?</button>
+        <button type="button" class="chip icon-anim" data-example="The S&P is at highs. How much drawdown should I expect if I buy here?"><i data-lucide="bar-chart-3"></i> SPY at highs</button>
       </div>
 
       <div class="controls">
@@ -399,16 +796,18 @@
         </div>
 
         <div class="field">
-          <label>Analogue universe</label>
-          <div class="seg" id="scopeSeg">
+          <span class="field-label" id="scopeLabel" style="font-family:var(--font-mono);font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.1em;color:var(--fg-muted);">Analogue universe</span>
+          <div class="seg" id="scopeSeg" role="radiogroup" aria-labelledby="scopeLabel">
             <label class="on"><input type="radio" name="scope" value="all" checked /> All assets</label>
             <label><input type="radio" name="scope" value="same" /> This asset</label>
           </div>
         </div>
       </div>
+
+      <div class="history" id="history" hidden></div>
     </section>
 
-    <div id="results">
+    <div id="results" aria-live="polite" aria-busy="false">
       <div class="grid">
         <div class="card">
           <div class="empty-state">Type a question above. Precedent will find the historical setups that matched this one and what happened next.</div>
@@ -416,26 +815,91 @@
       </div>
     </div>
 
-    <div class="provenance" id="provenance"></div>
+    <footer class="provenance" id="provenance"></footer>
   </div>
 </div>
+
+<nav class="mobile-nav" aria-label="Section navigation">
+  <button type="button" class="rail-btn icon-anim active" data-goto="#hero" aria-label="Ask a question"><i data-lucide="crosshair"></i></button>
+  <button type="button" class="rail-btn icon-anim" data-goto="#card-returns" aria-label="Forward returns"><i data-lucide="trending-up"></i></button>
+  <button type="button" class="rail-btn icon-anim" data-goto="#card-risk" aria-label="Drawdown risk"><i data-lucide="shield"></i></button>
+  <button type="button" class="rail-btn icon-anim" data-goto="#card-brief" aria-label="Brief"><i data-lucide="book-open"></i></button>
+  <button type="button" class="rail-btn icon-anim" data-goto="#card-playbook" aria-label="Regime playbook"><i data-lucide="layers"></i></button>
+</nav>
+
+<div class="toast" id="toast" role="status"></div>
 
 <script>
   lucide.createIcons();
 
-  const runBtn = document.getElementById('runBtn');
-  const results = document.getElementById('results');
-  const symbolSelect = document.getElementById('symbol');
-  const questionInput = document.getElementById('question');
-  const detectedLabel = document.getElementById('detected');
-  const provenance = document.getElementById('provenance');
-  const feedState = document.getElementById('feedState');
-  const scenarioCount = document.getElementById('scenarioCount');
-  const modelName = document.getElementById('modelName');
+  const $ = id => document.getElementById(id);
+  const runBtn = $('runBtn');
+  const results = $('results');
+  const symbolSelect = $('symbol');
+  const questionInput = $('question');
+  const detectedLabel = $('detected');
+  const provenance = $('provenance');
+  const feedState = $('feedState');
+  const feedDot = $('feedDot');
+  const scenarioCount = $('scenarioCount');
+  const modelName = $('modelName');
+  const historyRow = $('history');
+  const toastEl = $('toast');
 
   const SYMBOLS = [...symbolSelect.options].map(o => o.value);
+  const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // ---- natural-language ticker detection -------------------------------------
+  // ---- theme ----------------------------------------------------------------
+  const THEME_KEY = 'precedent.theme';
+  const currentTheme = () => (document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
+
+  function setTheme(theme, persist = true) {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (persist) { try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* ignore */ } }
+    // Show the switch target: a sun while dark, a moon while light.
+    const icon = theme === 'dark' ? 'sun' : 'moon';
+    [$('themeBtn'), $('themeBtnTop')].forEach(btn => { if (btn) btn.innerHTML = `<i data-lucide="${icon}"></i>`; });
+    lucide.createIcons();
+  }
+  setTheme(currentTheme(), false);
+  [$('themeBtn'), $('themeBtnTop')].forEach(btn => {
+    if (btn) btn.addEventListener('click', () => setTheme(currentTheme() === 'dark' ? 'light' : 'dark'));
+  });
+
+  // ---- toast ----------------------------------------------------------------
+  let toastTimer;
+  function toast(message) {
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400);
+  }
+
+  // ---- glass specular highlight --------------------------------------------
+  document.querySelectorAll('.glass-spec').forEach(el => {
+    el.addEventListener('pointermove', event => {
+      if (reduceMotion()) return;
+      const rect = el.getBoundingClientRect();
+      el.style.setProperty('--mx', `${event.clientX - rect.left}px`);
+      el.style.setProperty('--my', `${event.clientY - rect.top}px`);
+    });
+  });
+
+  // ---- navigation -----------------------------------------------------------
+  function setActive(goto) {
+    document.querySelectorAll('.rail-btn[data-goto]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.goto === goto);
+    });
+  }
+  document.querySelectorAll('.rail-btn[data-goto]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.querySelector(btn.dataset.goto);
+      setActive(btn.dataset.goto);
+      if (target) target.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+    });
+  });
+
+  // ---- natural-language ticker detection ------------------------------------
   // Track 3 is pitched as a natural-language-driven workbench, so the symbol is
   // inferred from the typed question; the dropdown stays as a manual override.
   const ALIASES = {
@@ -470,94 +934,132 @@
     }
   });
 
-  document.querySelectorAll('.chip').forEach(chip => {
+  document.querySelectorAll('.chip[data-example]').forEach(chip => {
     chip.addEventListener('click', () => {
       questionInput.value = chip.dataset.example;
       questionInput.dispatchEvent(new Event('input'));
+      questionInput.focus();
     });
   });
 
+  function setScope(value) {
+    document.querySelectorAll('#scopeSeg label').forEach(label => {
+      const input = label.querySelector('input');
+      input.checked = input.value === value;
+      label.classList.toggle('on', input.checked);
+    });
+  }
   document.querySelectorAll('#scopeSeg label').forEach(label => {
-    label.addEventListener('click', () => {
-      document.querySelectorAll('#scopeSeg label').forEach(l => l.classList.remove('on'));
-      label.classList.add('on');
-    });
+    label.addEventListener('click', () => setScope(label.querySelector('input').value));
+  });
+  const scope = () => document.querySelector('input[name="scope"]:checked').value;
+
+  // ---- keyboard shortcuts ---------------------------------------------------
+  document.addEventListener('keydown', event => {
+    const tag = document.activeElement ? document.activeElement.tagName : '';
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      run();
+    } else if (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) {
+      event.preventDefault();
+      questionInput.focus();
+    } else if (event.key === 'Escape' && document.activeElement === questionInput) {
+      questionInput.value = '';
+      detectedLabel.textContent = '';
+    }
   });
 
-  document.querySelectorAll('.rail-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.rail-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const target = document.querySelector(btn.dataset.goto);
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+  // ---- recent queries -------------------------------------------------------
+  const HISTORY_KEY = 'precedent.history';
+  function readHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch (e) { return []; }
+  }
+  function pushHistory(entry) {
+    const list = readHistory().filter(x => !(x.q === entry.q && x.symbol === entry.symbol));
+    list.unshift(entry);
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 5))); } catch (e) { /* ignore */ }
+    renderHistory();
+  }
+  function renderHistory() {
+    const list = readHistory();
+    if (!list.length) { historyRow.hidden = true; historyRow.innerHTML = ''; return; }
+    historyRow.hidden = false;
+    historyRow.innerHTML = `<span class="history-label">Recent</span>` + list.map((x, i) =>
+      `<button type="button" class="history-chip" data-history="${i}" title="${escapeHtml(x.q)}">${escapeHtml(x.symbol)} · ${escapeHtml(x.q)}</button>`
+    ).join('');
+  }
+  historyRow.addEventListener('click', event => {
+    const btn = event.target.closest('[data-history]');
+    if (!btn) return;
+    const item = readHistory()[Number(btn.dataset.history)];
+    if (!item) return;
+    questionInput.value = item.q;
+    symbolSelect.value = item.symbol;
+    setScope(item.scope || 'all');
+    detectedLabel.textContent = `detected ${item.symbol}`;
+    run();
   });
 
-  // ---- formatting helpers ----------------------------------------------------
+  // ---- deep links -----------------------------------------------------------
+  function syncUrl(symbol, q, scopeValue) {
+    const params = new URLSearchParams();
+    params.set('symbol', symbol);
+    if (q) params.set('q', q);
+    params.set('scope', scopeValue);
+    history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
+  }
+
+  // ---- formatting -----------------------------------------------------------
   function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, c => (
       { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
     ));
   }
-
   function fmtPct(v, digits = 2) {
     if (v == null) return '<span class="muted">—</span>';
     return `<span class="${v >= 0 ? 'positive' : 'negative'}">${(v * 100).toFixed(digits)}%</span>`;
   }
-
-  function pct(v, digits = 2) {
-    return v == null ? '—' : `${(v * 100).toFixed(digits)}%`;
-  }
-
-  function num(v, digits = 2) {
-    return v == null ? '—' : Number(v).toFixed(digits);
-  }
-
-  function kv(k, v) {
-    return `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;
-  }
+  const pct = (v, digits = 2) => (v == null ? '—' : `${(v * 100).toFixed(digits)}%`);
+  const num = (v, digits = 2) => (v == null ? '—' : Number(v).toFixed(digits));
+  const kv = (k, v) => `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;
 
   function cardHead(icon, title, right = '') {
     return `<div class="card-head">
-      <span class="card-ico"><i data-lucide="${icon}"></i></span>
+      <span class="card-ico icon-anim"><i data-lucide="${icon}"></i></span>
       <span class="card-title">${title}</span>
       <span class="spacer"></span>${right}
     </div>`;
   }
 
-  function scope() {
-    return document.querySelector('input[name="scope"]:checked').value;
-  }
-
   function setFeed(source, asOf) {
-    const labels = { live: 'live', cache: 'cached', snapshot: 'snapshot', 'cache-stale': 'stale cache' };
+    const labels = { live: 'live', cache: 'cached', snapshot: 'snapshot', 'cache-stale': 'stale' };
     feedState.textContent = labels[source] || 'unknown';
-    const dot = feedState.parentElement.querySelector('.dot');
-    dot.className = 'dot' + (source === 'live' ? '' : (source ? ' warn' : ' idle'));
-    if (asOf) feedState.title = `Latest bar: ${asOf}`;
+    feedDot.className = 'dot' + (source === 'live' ? ' ok' : (source ? ' warn' : ''));
+    feedState.parentElement.title = asOf ? `Latest bar: ${asOf}` : '';
   }
 
-  // Win-rate ring — the first number a trader reads.
+  // ---- data viz -------------------------------------------------------------
+  // Win-rate ring. Colour is used only to signal direction (above/below a coin
+  // flip); everything else is one ink, so the page stays calm.
   function ring(value, label) {
     const C = 2 * Math.PI * 56;
     const filled = value == null ? 0 : Math.max(0, Math.min(1, value));
-    const colour = value == null ? 'var(--muted-dim)' : (filled >= 0.5 ? 'var(--green)' : 'var(--red)');
-    const offset = (C * (1 - filled)).toFixed(1);
-    return `<div class="ring-box">
+    const tone = value == null ? '' : (filled >= 0.5 ? 'pos' : 'neg');
+    return `<div class="ring-box" role="img" aria-label="${label}: ${value == null ? 'unavailable' : pct(filled, 0)}">
       <svg class="ring" viewBox="0 0 132 132" aria-hidden="true">
         <circle class="track" cx="66" cy="66" r="56"></circle>
-        <circle class="ring-fill" cx="66" cy="66" r="56" style="stroke:${colour};stroke-dasharray:${C.toFixed(1)};stroke-dashoffset:${offset}"></circle>
+        <circle class="ring-fill ${tone}" cx="66" cy="66" r="56" style="stroke-dasharray:${C.toFixed(1)};stroke-dashoffset:${(C * (1 - filled)).toFixed(1)}"></circle>
       </svg>
       <div class="ring-val"><b>${value == null ? '—' : pct(filled, 0)}</b><span>${label}</span></div>
     </div>`;
   }
 
-  // Real price action: the last 120 closes from the bars we actually fetched,
-  // with a 50-day mean for context.
+  // Real price action: the last 120 closes we actually fetched, with a 50-day
+  // mean for context.
   function sparkline(bars) {
     const series = bars.map(b => b.close).slice(-120);
     if (series.length < 2) return '';
-    const w = 600, h = 104, pad = 8;
+    const w = 600, h = 108, pad = 8;
     const min = Math.min(...series);
     const max = Math.max(...series);
     const span = (max - min) || 1;
@@ -569,7 +1071,7 @@
       return slice.reduce((a, b) => a + b, 0) / slice.length;
     });
     const maLine = ma.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Price, last ${series.length} sessions">
       <polygon class="area" points="0,${h} ${line} ${w},${h}" vector-effect="non-scaling-stroke"></polygon>
       <polyline class="ma" points="${maLine}" vector-effect="non-scaling-stroke"></polyline>
       <polyline class="line" points="${line}" vector-effect="non-scaling-stroke"></polyline>
@@ -591,8 +1093,8 @@
     const max = Math.max(...counts, 1);
     const cols = counts.map((c, i) => {
       const height = c === 0 ? 3 : Math.max(10, Math.round((c / max) * 92));
-      const cls = c === 0 ? '' : (i <= 2 ? 'r' : 'g');
-      return `<div class="bars-col"><span class="bars-val">${c}</span><div class="bars-bar ${cls}" style="height:${height}px"></div></div>`;
+      const tone = c === 0 ? '' : (i <= 2 ? 'neg' : 'pos');
+      return `<div class="bars-col"><span class="bars-val">${c}</span><div class="bars-bar ${tone}" style="height:${height}px"></div></div>`;
     }).join('');
     const axis = labels.map(l => `<span>${l}</span>`).join('');
     return `<div class="bars">${cols}</div><div class="bars-axis">${axis}</div>`;
@@ -606,6 +1108,7 @@
     </div>`;
   }
 
+  // ---- tables and playbook --------------------------------------------------
   function playbookRows(playbook) {
     const head = `<div class="pb-row">
       <span class="pb-cols">Regime</span>
@@ -619,7 +1122,7 @@
       return `<div class="pb-row">
         <span class="pb-name">${String(r.regime).replace(/_/g, ' ')}</span>
         <span class="pb-n">${r.sampleSize}</span>
-        <div class="wr-track"><div class="wr-fill ${wr >= 0.5 ? '' : 'r'}" style="width:${(wr * 100).toFixed(1)}%"></div></div>
+        <div class="wr-track" role="img" aria-label="win rate ${pct(wr, 0)}"><div class="wr-fill ${wr >= 0.5 ? 'pos' : 'neg'}" style="width:${(wr * 100).toFixed(1)}%"></div></div>
         <span class="pb-num">${fmtPct(r.meanForwardReturn20d)}</span>
         <span class="pb-num pb-worst">${fmtPct(r.worstMaxDrawdown20d)}</span>
       </div>`;
@@ -651,7 +1154,7 @@
       if (!playbook.regimes || !playbook.regimes.length) return '';
       return `<div class="card c5" id="card-playbook">
         ${cardHead('layers', `Regime playbook — ${escapeHtml(playbook.symbol)}`)}
-        <div class="card-note" style="margin-bottom:14px;">Every regime this asset has traded in across ${playbook.total} stored scenarios. Regimes with fewer than ${playbook.minSample} samples are omitted rather than shown with a meaningless win rate.</div>
+        <div class="card-note" style="margin-bottom:var(--space-3);">Every regime this asset has traded in across ${playbook.total} stored scenarios. Regimes with fewer than ${playbook.minSample} samples are omitted rather than shown with a meaningless win rate.</div>
         ${playbookRows(playbook)}
       </div>`;
     } catch {
@@ -677,7 +1180,6 @@
       /* the provenance strip is optional and must never block the app */
     }
   }
-  loadProvenance();
 
   function downloadCsv(symbol, matches) {
     const header = 'date,asset,regime,forward_return_5d,forward_return_20d,max_drawdown_20d,distance';
@@ -691,38 +1193,101 @@
     link.download = `precedent-${symbol}-analogues.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    toast('Analogue CSV downloaded');
   }
 
+  // ---- run progress ---------------------------------------------------------
+  // Four honest stages. The first resolves when the bars land; the remaining
+  // three are computed together server-side, so they resolve together.
+  const STAGES = [
+    ['bars', 'Fetching daily bars', 'Yahoo Finance / Coinbase Exchange'],
+    ['regime', 'Classifying the market regime', 'MA50, MA200, 20d momentum, ATR percentile'],
+    ['match', 'Matching historical analogues', 'distance across regime, momentum and volatility'],
+    ['brief', 'Writing the brief', 'LLM synthesis over the computed statistics'],
+  ];
 
+  function progressCard(symbol) {
+    const items = STAGES.map(([id, label, note], i) => `
+      <li id="step-${id}"${i === 0 ? ' class="active"' : ''}>
+        <span class="step-mark"><i data-lucide="${i === 0 ? 'loader-2' : 'circle'}"${i === 0 ? ' class="spin"' : ''}></i></span>
+        <span>${label}</span>
+        <span class="step-note">${note}</span>
+      </li>`).join('');
+    return `<div class="grid"><div class="card c12" id="progressCard">
+      ${cardHead('loader', `Running stress test — ${escapeHtml(symbol)}`)}
+      <ul class="steps">${items}</ul>
+      <div class="elapsed" id="elapsed">Working…</div>
+    </div></div>`;
+  }
+
+  function markStep(id, state) {
+    const el = document.getElementById(`step-${id}`);
+    if (!el) return;
+    el.classList.remove('active', 'done');
+    if (state) el.classList.add(state);
+    const mark = el.querySelector('.step-mark');
+    if (mark) {
+      const icon = state === 'done' ? 'check' : (state === 'active' ? 'loader-2' : 'circle');
+      mark.innerHTML = `<i data-lucide="${icon}"${state === 'active' ? ' class="spin"' : ''}></i>`;
+      lucide.createIcons();
+    }
+  }
+
+  function startElapsed() {
+    const started = Date.now();
+    const timer = setInterval(() => {
+      const live = document.getElementById('elapsed');
+      if (!live) { clearInterval(timer); return; }
+      live.textContent = `${((Date.now() - started) / 1000).toFixed(1)}s elapsed`;
+    }, 100);
+    return () => clearInterval(timer);
+  }
+
+  // ---- result actions -------------------------------------------------------
   let last = null;
-
   results.addEventListener('click', event => {
     const btn = event.target.closest('[data-action]');
     if (!btn || !last) return;
     if (btn.dataset.action === 'copy') {
-      navigator.clipboard.writeText(last.brief).then(() => {
-        btn.textContent = 'Copied';
-        setTimeout(() => { btn.innerHTML = '<i data-lucide="copy"></i> Copy brief'; lucide.createIcons(); }, 1600);
-      }).catch(() => { btn.textContent = 'Copy failed'; });
+      navigator.clipboard.writeText(last.brief)
+        .then(() => toast('Brief copied to clipboard'))
+        .catch(() => toast('Could not access the clipboard'));
     }
     if (btn.dataset.action === 'csv') downloadCsv(last.symbol, last.matches);
+    if (btn.dataset.action === 'link') {
+      navigator.clipboard.writeText(location.href)
+        .then(() => toast('Shareable link copied'))
+        .catch(() => toast('Could not access the clipboard'));
+    }
   });
 
+  // ---- the run --------------------------------------------------------------
   async function run() {
     const symbol = symbolSelect.value;
     const question = questionInput.value.trim();
-    const catalyst = document.getElementById('catalyst').value.trim();
+    const catalyst = $('catalyst').value.trim();
     const scopeValue = scope();
 
+    if (!question) {
+      toast('Describe the trade first — one sentence is enough');
+      questionInput.focus();
+      return;
+    }
+
     runBtn.disabled = true;
-    runBtn.textContent = 'Running...';
-    results.innerHTML = `<div class="grid"><div class="card"><div class="empty-state">Pulling historical bars, classifying the regime and matching analogues...</div></div></div>`;
+    runBtn.setAttribute('aria-disabled', 'true');
+    results.setAttribute('aria-busy', 'true');
+    results.innerHTML = progressCard(symbol);
+    lucide.createIcons();
+    const stopElapsed = startElapsed();
 
     try {
       const barsRes = await fetch(`/api/bars?symbol=${encodeURIComponent(symbol)}`);
       const barsData = await barsRes.json();
       if (!barsRes.ok) throw new Error(barsData.error || 'Failed to fetch bars');
       setFeed(barsData.source, barsData.asOf);
+      markStep('bars', 'done');
+      markStep('regime', 'active');
 
       const stRes = await fetch('/api/stress-test', {
         method: 'POST',
@@ -742,51 +1307,59 @@
 
       if (!data.stats) {
         results.innerHTML = `<div class="grid"><div class="card"><div class="empty-state">${escapeHtml(data.brief)}</div></div></div>`;
+        lucide.createIcons();
         return;
       }
+      markStep('regime', 'done');
+      markStep('match', 'done');
+      markStep('brief', 'done');
 
       const s = data.stats;
       const f = data.features || {};
       last = { symbol, brief: data.brief, matches: data.matches || [] };
-      const paragraphs = escapeHtml(data.brief).split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, '<br />')}</p>`).join('');
-      const playbookHtml = await loadPlaybook(symbol);
+
       const scopeNote = scopeValue === 'same' ? 'same asset only' : 'cross-asset';
+      const paragraphs = escapeHtml(data.brief).split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, '<br />')}</p>`).join('');
       const feedBadge = data.barsSource && data.barsSource !== 'live'
-        ? `<span class="badge warn">bars: ${escapeHtml(data.barsSource)}${data.barsAsOf ? ` · ${escapeHtml(data.barsAsOf)}` : ''}</span>`
+        ? `<span class="badge badge-warn">bars: ${escapeHtml(data.barsSource)}${data.barsAsOf ? ` · ${escapeHtml(data.barsAsOf)}` : ''}</span>`
         : `<span class="badge">bars: live${data.barsAsOf ? ` · ${escapeHtml(data.barsAsOf)}` : ''}</span>`;
+      const playbookHtml = await loadPlaybook(symbol);
 
       results.innerHTML = `<div class="grid">
 
-        <div class="card c4" id="card-verdict">
+        <div class="card c4 glass-spec" id="card-verdict">
           ${cardHead('crosshair', 'Verdict at a glance')}
-          <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:var(--space-5); flex-wrap:wrap;">
             ${ring(s.winRate20d, '20d win rate')}
             <div style="min-width:0;">
-              <div class="badges" style="margin-bottom:10px;">
-                <span class="badge regime">${String(data.regime).replace(/_/g, ' ')}</span>
+              <div class="badges" style="margin-bottom:var(--space-3);">
+                <span class="badge badge-regime">${String(data.regime).replace(/_/g, ' ')}</span>
               </div>
-              <div class="card-note">${s.sampleSize} analogues · ${scopeNote} · 5d win rate ${pct(s.winRate5d, 0)}</div>
+              <div class="card-note">${s.sampleSize} analogues · ${scopeNote}<br />5d win rate ${pct(s.winRate5d, 0)}</div>
             </div>
           </div>
           ${s.adverseExcursionP75 != null ? `<div class="decision">Plan for at least a <b>${pct(s.adverseExcursionP75, 1)}</b> adverse excursion. Half of these analogues were further underwater than that within 20 days — the level at which this setup stops behaving like its typical self.</div>` : ''}
-          <div style="margin-top:14px;">${feedBadge}</div>
+          <div style="margin-top:var(--space-4); display:flex; gap:var(--space-2); flex-wrap:wrap;">
+            ${feedBadge}
+            <button type="button" class="btn-ghost icon-anim" data-action="link"><i data-lucide="link"></i> Copy link</button>
+          </div>
         </div>
 
-        <div class="card c8" id="card-price">
+        <div class="card c8 glass-spec" id="card-price">
           ${cardHead('activity', `Price action — ${escapeHtml(symbol)}`)}
-          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:10px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:var(--space-4); margin-bottom:var(--space-3); flex-wrap:wrap;">
             <div>
               <div class="card-big">${num(f.price)}</div>
               <div class="card-note">Last close ${escapeHtml(f.asOf || '—')} · 20d momentum ${fmtPct(f.momentum20)}</div>
             </div>
             <div class="badges">
-              <span class="badge">${barsData.bars.length} bars loaded</span>
+              <span class="badge">${barsData.bars.length} bars</span>
               <span class="badge">ATR percentile ${f.atrPercentile != null ? `${(f.atrPercentile * 100).toFixed(0)}th` : '—'}</span>
             </div>
           </div>
           ${sparkline(barsData.bars)}
-          <div class="card-note" style="margin-top:8px;">Last 120 closes (amber) against the 50-day mean (dashed).</div>
-          <div class="kv-2col" style="margin-top:14px;">
+          <div class="card-note" style="margin-top:var(--space-2);">Last 120 closes against the 50-day mean (dashed).</div>
+          <div class="kv-2col" style="margin-top:var(--space-4);">
             ${kv('MA50', num(f.ma50))}
             ${kv('MA200', num(f.ma200))}
             ${kv('Price vs MA50', f.ma50 ? fmtPct((f.price - f.ma50) / f.ma50) : '—')}
@@ -794,10 +1367,10 @@
           </div>
         </div>
 
-        <div class="card c7" id="card-returns">
+        <div class="card c7 glass-spec" id="card-returns">
           ${cardHead('trending-up', 'Forward returns after the match')}
           ${bucketBars(last.matches)}
-          <div class="kv-2col" style="margin-top:16px;">
+          <div class="kv-2col" style="margin-top:var(--space-5);">
             ${kv('Mean 5d', fmtPct(s.meanForwardReturn5d))}
             ${kv('Mean 20d', fmtPct(s.meanForwardReturn20d))}
             ${kv('Median 20d', fmtPct(s.medianForwardReturn20d))}
@@ -807,52 +1380,132 @@
           </div>
         </div>
 
-        <div class="card c5" id="card-risk">
+        <div class="card c5 glass-spec" id="card-risk">
           ${cardHead('shield', 'Drawdown risk')}
-          ${meter('Mean max drawdown (20d)', pct(s.meanMaxDrawdown20d, 2), Math.abs(s.meanMaxDrawdown20d || 0) / 0.3, 'r')}
-          ${meter('Worst drawdown in sample', pct(s.worstMaxDrawdown20d, 2), Math.abs(s.worstMaxDrawdown20d || 0) / 0.3, 'r')}
-          ${meter('Analogues that drew down >5%', pct(s.shareDrawdownOver5pct, 0), s.shareDrawdownOver5pct || 0, 'r')}
+          ${meter('Mean max drawdown (20d)', pct(s.meanMaxDrawdown20d, 2), Math.abs(s.meanMaxDrawdown20d || 0) / 0.3, 'neg')}
+          ${meter('Worst drawdown in sample', pct(s.worstMaxDrawdown20d, 2), Math.abs(s.worstMaxDrawdown20d || 0) / 0.3, 'neg')}
+          ${meter('Analogues that drew down >5%', pct(s.shareDrawdownOver5pct, 0), s.shareDrawdownOver5pct || 0, 'neg')}
           ${meter('Adverse excursion to plan for', pct(s.adverseExcursionP75, 2), (s.adverseExcursionP75 || 0) / 0.3)}
-          <div class="card-note" style="margin-top:15px;">Meters are scaled to a 30% adverse move — the range where these assets actually operate.</div>
+          <div class="card-note" style="margin-top:var(--space-4);">Meters are scaled to a 30% adverse move — the range where these assets actually operate.</div>
         </div>
 
-        <div class="card c8" id="card-brief">
-          ${cardHead('book-open', 'Stress test brief', `<button type="button" class="btn-ghost" data-action="copy"><i data-lucide="copy"></i> Copy brief</button>`)}
+        <div class="card c8 glass-spec" id="card-brief">
+          ${cardHead('book-open', 'Stress test brief', `<button type="button" class="btn-ghost icon-anim" data-action="copy"><i data-lucide="copy"></i> Copy brief</button>`)}
           <div class="brief">${paragraphs}</div>
         </div>
 
-        <div class="card c4" id="card-signals">
+        <div class="card c4 glass-spec" id="card-signals">
           ${cardHead('gauge', 'Live signals')}
-          ${meter('RSI(14)', data.rsi != null ? data.rsi.toFixed(1) : 'unavailable', (data.rsi || 0) / 100, data.rsi != null && data.rsi > 70 ? 'r' : (data.rsi != null && data.rsi < 30 ? 'g' : ''))}
-          ${meter('MACD histogram', data.macd ? data.macd.histogram.toFixed(3) : 'unavailable', Math.min(1, Math.abs((data.macd && data.macd.histogram) || 0) / 2), data.macd && data.macd.histogram >= 0 ? 'g' : 'r')}
-          ${meter('Fear &amp; Greed', data.fearGreed ? `${data.fearGreed.value} (${escapeHtml(data.fearGreed.classification)})` : 'not applicable', (data.fearGreed && data.fearGreed.value || 0) / 100, data.fearGreed && data.fearGreed.value >= 55 ? 'g' : 'r')}
-          <div class="card-note" style="margin-top:15px;">RSI reads overbought above 70 and oversold below 30. Fear &amp; Greed applies to crypto symbols only.</div>
+          ${meter('RSI(14)', data.rsi != null ? data.rsi.toFixed(1) : 'unavailable', (data.rsi || 0) / 100, data.rsi != null && data.rsi > 70 ? 'neg' : (data.rsi != null && data.rsi < 30 ? 'pos' : ''))}
+          ${meter('MACD histogram', data.macd ? data.macd.histogram.toFixed(3) : 'unavailable', Math.min(1, Math.abs((data.macd && data.macd.histogram) || 0) / 2), data.macd && data.macd.histogram >= 0 ? 'pos' : 'neg')}
+          ${meter('Fear &amp; Greed', data.fearGreed ? `${data.fearGreed.value} (${escapeHtml(data.fearGreed.classification)})` : 'not applicable', (data.fearGreed && data.fearGreed.value || 0) / 100, data.fearGreed && data.fearGreed.value >= 55 ? 'pos' : 'neg')}
+          <div class="card-note" style="margin-top:var(--space-4);">RSI reads overbought above 70 and oversold below 30. Fear &amp; Greed applies to crypto symbols only.</div>
         </div>
 
-        <div class="card c12" id="card-analogues">
-          ${cardHead('table-2', `${s.sampleSize} matched historical scenarios`, `<button type="button" class="btn-ghost" data-action="csv"><i data-lucide="download"></i> Export CSV</button>`)}
-          <div class="card-note" style="margin-bottom:10px;">Each row is a real historical setup matched on regime, 20-day momentum and ATR percentile — with what actually happened over the following 5 and 20 days. Lower distance means a closer match.</div>
+        <div class="card c12 glass-spec" id="card-analogues">
+          ${cardHead('table-2', `${s.sampleSize} matched historical scenarios`, `<button type="button" class="btn-ghost icon-anim" data-action="csv"><i data-lucide="download"></i> Export CSV</button>`)}
+          <div class="card-note" style="margin-bottom:var(--space-3);">Each row is a real historical setup matched on regime, 20-day momentum and ATR percentile — with what actually happened over the following 5 and 20 days. Lower distance means a closer match.</div>
           ${analogueTable(last.matches)}
         </div>
 
         ${playbookHtml}
 
-        ${data.headlines && data.headlines.length ? `<div class="card c7">
+        ${data.headlines && data.headlines.length ? `<div class="card c7 glass-spec">
           ${cardHead('newspaper', 'Headlines')}
           <ul class="headlines">${data.headlines.map(h => `<li>${escapeHtml(h.title)}<span class="src">${escapeHtml(h.source)}</span></li>`).join('')}</ul>
         </div>` : ''}
 
       </div>`;
+      lucide.createIcons();
+      pushHistory({ symbol, q: question, scope: scopeValue });
+      syncUrl(symbol, question, scopeValue);
+
     } catch (err) {
       results.innerHTML = `<div class="grid"><div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div></div>`;
+      lucide.createIcons();
     } finally {
+      stopElapsed();
+      results.setAttribute('aria-busy', 'false');
       runBtn.disabled = false;
-      runBtn.innerHTML = '<i data-lucide="search"></i> Stress test';
+      runBtn.removeAttribute('aria-disabled');
+      runBtn.innerHTML = '<i data-lucide="search" class="icon-anim"></i> Stress test';
       lucide.createIcons();
     }
   }
 
   runBtn.addEventListener('click', run);
+
+  // SCRIPT_F — init and page wiring -------------------------------------------
+  // Enter behaves like the button in the ask box. There is no form element, so
+  // plain Enter runs the test and Shift+Enter is left free for newlines.
+  [questionInput, $('catalyst')].forEach(input => {
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        run();
+      }
+    });
+  });
+
+  // A tapped toast should dismiss, never trap the next click.
+  toastEl.addEventListener('click', () => toastEl.classList.remove('show'));
+
+  // ---- scroll spy ------------------------------------------------------------
+  // The rail mirrors the viewport. Result cards appear and vanish with every
+  // run, so the active section is recomputed from live geometry (targets are
+  // re-collected each pass) and coalesced into one rAF per scroll burst.
+  function spyTargets() {
+    const seen = new Set();
+    return [...document.querySelectorAll('.rail-btn[data-goto]')]
+      .map(btn => document.querySelector(btn.dataset.goto))
+      .filter(el => el && !seen.has(el) && seen.add(el));
+  }
+
+  function spy() {
+    const line = window.innerHeight * 0.4;
+    let current = null;
+    spyTargets().forEach(el => { if (el.getBoundingClientRect().top <= line) current = el; });
+    if (!current) current = document.querySelector('#hero');
+    if (current) setActive(`#${current.id}`);
+  }
+
+  let spyQueued = false;
+  function queueSpy() {
+    if (spyQueued) return;
+    spyQueued = true;
+    requestAnimationFrame(() => { spyQueued = false; spy(); });
+  }
+  window.addEventListener('scroll', queueSpy, { passive: true });
+  window.addEventListener('resize', queueSpy, { passive: true });
+  // Results are replaced wholesale after each run — re-sync the rail then too.
+  new MutationObserver(queueSpy).observe(results, { childList: true });
+
+  // ---- deep links: ?symbol=NVDA&q=...&scope=all -------------------------------
+  // A shared link should open on the finished answer, not on an empty form —
+  // this is what a judge clicks from the X post or the submission form.
+  function restoreFromUrl() {
+    const params = new URLSearchParams(location.search);
+    const sym = (params.get('symbol') || '').toUpperCase();
+    const q = params.get('q') || '';
+    if (SYMBOLS.includes(sym)) symbolSelect.value = sym;
+    if (q) questionInput.value = q;
+    setScope(params.get('scope') === 'same' ? 'same' : 'all');
+    renderHistory();
+    loadProvenance();
+    if (q) {
+      questionInput.dispatchEvent(new Event('input'));
+      run();
+    }
+    queueSpy();
+  }
+
+  restoreFromUrl();
+
+
+
+
+
+
 </script>
 </body>
 </html>

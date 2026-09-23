@@ -13,6 +13,18 @@ const { computeRSI, computeMACD, fetchFearGreedIndex, fetchNewsHeadlines } = req
 const scenarioDB = require('./scenarioDB.json');
 const fs = require('fs');
 
+// One-pass baselines, computed once at boot, so the UI can anchor every analogue
+// stat against the full stored history ("is an 83% win rate actually good?").
+const baseline = (() => {
+  const rets = [];
+  for (const row of scenarioDB) if (row.forwardReturn20d != null) rets.push(row.forwardReturn20d);
+  if (!rets.length) return null;
+  const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
+  const wins = rets.filter(v => v > 0).length;
+  return { meanForwardReturn20d: mean, winRate20d: wins / rets.length, n: rets.length };
+})();
+
+
 const app = express();
 // Equities carry ~5y of daily bars (often >100KB), far above express's default
 // 100KB JSON body limit — raise it so stress-test requests aren't rejected.
@@ -73,6 +85,7 @@ app.get('/api/meta', (req, res) => {
   } catch { /* no snapshot committed */ }
 
   res.json({
+    baseline,
     scenarioCount: scenarioDB.length,
     symbolCount: Object.keys(bySymbol).length,
     bySymbol,
@@ -178,12 +191,18 @@ Worst max drawdown in the sample: ${pct(stats.worstMaxDrawdown20d)}
 Share of analogues that drew down more than 5%: ${pct(stats.shareDrawdownOver5pct)}
 
 TASK
-Write a 150-220 word plain-English stress test brief. Rules:
-1. Open with the base-rate win rate and the drawdown a trader would have had to sit through.
-2. Give one concrete invalidation level as a percentage adverse move (use the drawdown figures) and name it as the level at which the thesis should be reconsidered.
-3. Reference the technical signals and headlines only if they meaningfully agree or conflict with the base rate.
-4. State once, clearly, that this is historical pattern-matching, not a prediction.
-5. Do not hedge every sentence. No bullet lists, no headings — flowing prose only.`;
+Write a 150-220 word plain-English stress test brief as exactly four paragraphs, in this order, each starting with one of these labels on its own line, uppercase:
+VERDICT:
+THE RECORD:
+INVALIDATION:
+WHAT TO WATCH:
+Rules:
+1. VERDICT: one sentence — open with the base-rate win rate and the drawdown a trader would have had to sit through.
+2. THE RECORD: what actually happened after these similar setups, in plain English.
+3. INVALIDATION: one concrete invalidation level as a percentage adverse move (use the drawdown figures) and name it as the level at which the thesis should be reconsidered.
+4. WHAT TO WATCH: reference the technical signals and headlines only if they meaningfully agree or conflict with the base rate; otherwise name what would change the picture.
+5. State once, clearly, that this is historical pattern-matching, not a prediction.
+6. No bullet lists anywhere. Plain flowing sentences under each label. The four labels must appear exactly as written, each on its own line.`;
 
     // The LLM call is isolated on purpose: the base rates, analogue list and
     // signal layers are already computed and real. If Groq is rate-limited or
@@ -207,8 +226,9 @@ Write a 150-220 word plain-English stress test brief. Rules:
     res.json({
       regime, features, stats, matches, matchCount: matches.length,
       barsSource, barsAsOf, rsi, macd, fearGreed, headlines,
-      brief,
+      brief, baseline,
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

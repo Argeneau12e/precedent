@@ -6,6 +6,78 @@
       "sourceType": "github",
       "skillPath": ".claude/skills/design-system/SKILL.md",
       "computedHash": "a8d1f1cd0f55979a872a2ce9717d3c33df23b0c378738b8d6adb574bfb266c77"
+    },
+    "vibe-coding-advisor": {
+      "source": "uxuiprinciples/agent-skills",
+      "sourceType": "github",
+      "skillPath": "vibe-coding-advisor/SKILL.md",
+      "computedHash": "b63962ccdd7a673dd2cd6f48159d0b11dcdb749a25a7a2dee410fa72e7edd92f"
+    },
+    "uxui-evaluator": {
+      "source": "uxuiprinciples/agent-skills",
+      "sourceType": "github",
+      "skillPath": "uxui-evaluator/SKILL.md",
+      "computedHash": "8a2d17b15bbc7910506d3eaa34b73e352f60b495d4fd63ff21d7b511f23903eb"
+    },
+    "interface-auditor": {
+      "source": "uxuiprinciples/agent-skills",
+      "sourceType": "github",
+      "skillPath": "interface-auditor/SKILL.md",
+      "computedHash": "0de2fcce6ac87c96cc7a038ffed9d8d73fe12214dcb7ff993f41eef2b44e91f6"
+    },
+    "flow-checker": {
+      "source": "uxuiprinciples/agent-skills",
+      "sourceType": "github",
+      "skillPath": "flow-checker/SKILL.md",
+      "computedHash": "1bebd217177759e21dd0b4ffb1f0aaa5992958bc1137df98fd145cf51b4e2af1"
+    },
+    "ai-interface-reviewer": {
+      "source": "uxuiprinciples/agent-skills",
+      "sourceType": "github",
+      "skillPath": "ai-interface-reviewer/SKILL.md",
+      "computedHash": "be9477e9333dd282c0385cd28ee4972c6fb1b21af7ec9a75330acbf7c5abb716"
+    },
+    "ui-ux-kit": {
+      "source": "arham777/ui-ux-kit",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "55d55326cf84fc0c35585701cd36b822ca3e7d66de37e48b7435c87b778349f0"
+    },
+    "web-development": {
+      "source": "prangishviliAbe/agent-skills",
+      "sourceType": "github",
+      "skillPath": "web-development/SKILL.md",
+      "computedHash": "cee43f77de80ed788a173cbe6cac64f0cee590b336f90dff66a8d9196464b264"
+    },
+    "ui-ux": {
+      "source": "prangishviliAbe/agent-skills",
+      "sourceType": "github",
+      "skillPath": "ui-ux/SKILL.md",
+      "computedHash": "932218f2f68f64a78c232fc5d2223666f7df2f62ec1f3419b6a0a3f28d28bd24"
+    },
+    "token-efficiency": {
+      "source": "prangishviliAbe/agent-skills",
+      "sourceType": "github",
+      "skillPath": "token-efficiency/SKILL.md",
+      "computedHash": "a107ae42851b57561f034138fda68c1f84e656af5980bed930023cb188e088bb"
+    },
+    "security": {
+      "source": "prangishviliAbe/agent-skills",
+      "sourceType": "github",
+      "skillPath": "security/SKILL.md",
+      "computedHash": "bb1687427594806617f2eac030e13d1e084cd85f5f18d266bfa2811bdc7df5d3"
+    },
+    "premium-web-motion": {
+      "source": "prangishviliAbe/agent-skills",
+      "sourceType": "github",
+      "skillPath": "premium-web-motion/SKILL.md",
+      "computedHash": "15a34255380ff5cd0cd4d62370702785e67639b39d82f33634345a1a12dd81bf"
+    },
+    "anti-ai-slop-design": {
+      "source": "prangishviliAbe/agent-skills",
+      "sourceType": "github",
+      "skillPath": "anti-ai-slop-design/SKILL.md",
+      "computedHash": "f726a2fd31e075809ed4a00ef78ddfad5afb8f6ea238a2a65fd190c6a8ec7eca"
     }
   }
 }

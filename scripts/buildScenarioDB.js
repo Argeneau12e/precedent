@@ -6,10 +6,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { classifyRegime } = require('../lib/regimeClassifier');
-const { fetchCryptoDaily, fetchEquityDaily } = require('../lib/dataIngest');
-
-const CRYPTO_SYMBOLS = ['BTC', 'ETH'];
-const EQUITY_SYMBOLS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'META', 'SPY'];
+const { fetchCryptoDaily, fetchEquityDaily, EQUITY_SYMBOLS, CRYPTO_SYMBOLS } = require('../lib/dataIngest');
 
 function forwardReturn(bars, i, horizon) {
   if (i + horizon >= bars.length) return null;
@@ -73,17 +70,38 @@ async function main() {
     console.warn('WARNING: scenarioDB is empty — every upstream fetch failed. Do not fabricate entries here to fill the gap.');
   }
 
+  // Round every stored ratio to 6 decimals before writing. These are returns
+  // and percentiles where the sixth decimal is far below noise, but full
+  // float precision roughly doubles the file. The database has to be committed
+  // and loaded into a serverless function on cold start, so its size is a real
+  // deployment cost. Values are rounded once, here, and every consumer reads
+  // them as-is.
+  const round6 = v => (typeof v === 'number' && Number.isFinite(v) ? Number(v.toFixed(6)) : v);
+  const compact = all.map(row => ({
+    symbol: row.symbol,
+    date: row.date,
+    regime: row.regime,
+    features: {
+      momentum20: round6(row.features.momentum20),
+      atrPercentile: round6(row.features.atrPercentile),
+    },
+    forwardReturn5d: round6(row.forwardReturn5d),
+    forwardReturn20d: round6(row.forwardReturn20d),
+    maxDrawdown20d: round6(row.maxDrawdown20d),
+  }));
+
   // The build timestamp is written INTO the file. Previously the UI read file
   // mtime, which git checkouts, clones and Vercel's build step all rewrite —
   // that surfaced a bogus "scenario DB built 2018-10-20" in the provenance
   // footer. An embedded, immutable value is the only honest source.
   const output = {
     builtAt: new Date().toISOString(),
-    scenarioCount: all.length,
-    scenarios: all,
+    scenarioCount: compact.length,
+    scenarios: compact,
   };
-  fs.writeFileSync(path.join(__dirname, '../scenarioDB.json'), JSON.stringify(output));
-  console.log(`Wrote ${all.length} scenarios to scenarioDB.json (builtAt: ${output.builtAt})`);
+  const json = JSON.stringify(output);
+  fs.writeFileSync(path.join(__dirname, '../scenarioDB.json'), json);
+  console.log(`Wrote ${compact.length} scenarios to scenarioDB.json (builtAt: ${output.builtAt}, ${(json.length / 1048576).toFixed(2)} MB)`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

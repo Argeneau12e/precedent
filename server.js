@@ -90,15 +90,17 @@ app.use(express.json({ limit: '16mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // The allowlist is the security boundary: an arbitrary string must never reach
-// Yahoo/Coinbase. Both /api/bars and /api/stress-test validate against it.
-const SUPPORTED_SYMBOLS = new Set(['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'META', 'SPY', 'BTC', 'ETH']);
+// Yahoo/Coinbase. Both /api/bars and /api/stress-test validate against it. The
+// list is shared with the fetchers and the build scripts so the UI can never
+// offer an asset the server would reject.
+const { SUPPORTED_SYMBOLS, isCrypto } = require('./lib/dataIngest');
 
 // Normalize + validate a symbol, returning null when unsupported. Case and
 // surrounding whitespace are forgiven; everything else is rejected with 400.
 function normalizeSymbol(raw) {
   if (typeof raw !== 'string') return null;
   const sym = raw.trim().toUpperCase();
-  return SUPPORTED_SYMBOLS.has(sym) ? sym : null;
+  return SUPPORTED_SYMBOLS.includes(sym) ? sym : null;
 }
 
 // groq-sdk throws at construction when no key is present; construct lazily so
@@ -107,9 +109,13 @@ const GROQ_MODEL = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
 const groq = process.env.GROQ_API_KEY
   ? new Groq({ apiKey: process.env.GROQ_API_KEY })
   : null;
-const CRYPTO_SYMBOLS = new Set(['BTC', 'ETH']);
-// Headline queries should read naturally for each asset class.
-const CRYPTO_NEWS_QUERY = { BTC: 'Bitcoin price', ETH: 'Ethereum price' };
+// Headline queries should read naturally for each asset class. Crypto assets
+// are queried by name because a ticker search returns mostly noise.
+const CRYPTO_NEWS_QUERY = {
+  BTC: 'Bitcoin price', ETH: 'Ethereum price', SOL: 'Solana price',
+  XRP: 'XRP price', DOGE: 'Dogecoin price', ADA: 'Cardano price',
+  AVAX: 'Avalanche crypto price',
+};
 const NEWS_QUERY = symbol => CRYPTO_NEWS_QUERY[symbol] || `${symbol} stock`;
 
 app.get('/api/bars', readLimiter, async (req, res) => {
@@ -124,7 +130,7 @@ app.get('/api/bars', readLimiter, async (req, res) => {
     // Cache -> live -> committed snapshot. `source` is surfaced so the UI can
     // label cached/fallback data honestly instead of pretending it is live.
     const { bars, source, asOf, snapshotBuiltAt } = await getBars(symbol, {
-      isCrypto: CRYPTO_SYMBOLS.has(symbol),
+      isCrypto: isCrypto(symbol),
       forceSnapshot: req.query.snapshot === '1',
     });
     if (bars.length === 0) {
@@ -174,6 +180,9 @@ app.get('/api/meta', readLimiter, (req, res) => {
       'NewsAPI (headlines)',
     ],
     llm: groq ? GROQ_MODEL : null,
+    // The UI builds its asset picker from this, so the interface can never
+    // offer a symbol the server's allowlist would reject.
+    supportedSymbols: [...SUPPORTED_SYMBOLS],
   });
 });
 
@@ -236,7 +245,7 @@ app.post('/api/stress-test', stressTestLimiter, async (req, res) => {
 
     const rsi = computeRSI(bars);
     const macd = computeMACD(bars);
-    const fearGreed = CRYPTO_SYMBOLS.has(symbol) ? await fetchFearGreedIndex() : null;
+    const fearGreed = isCrypto(symbol) ? await fetchFearGreedIndex() : null;
     const headlines = await fetchNewsHeadlines(NEWS_QUERY(symbol), 5);
 
     const dataNote = barsSource && barsSource !== 'live'

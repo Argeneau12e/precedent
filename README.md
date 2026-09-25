@@ -26,8 +26,8 @@ missing or there is too little history, you get an explicit empty/error state.
 
 | Asset | Source | Key required |
 |---|---|---|
-| BTC / ETH | Coinbase Exchange candles (keyless) | No |
-| US equities / SPY | Yahoo Finance chart endpoint, ~5y daily OHLC | No |
+| BTC, ETH, SOL, XRP, DOGE, ADA, AVAX | Coinbase Exchange candles (keyless) | No |
+| 15 US equities / ETFs | Yahoo Finance chart endpoint, ~5y daily OHLC | No |
 | Fear & Greed Index | alternative.me (keyless) | No |
 | Headlines | NewsAPI | Yes (optional) |
 | Narrative brief | Groq (`qwen/qwen3.8-27b` by default) | Yes |
@@ -58,7 +58,8 @@ live. The snapshot is real observed market data with a recorded build date.
    analogue table and playbook with an explicit note instead of a fake brief.
    `NEWSAPI_KEY` is optional — headlines are omitted (never invented) without it.
 3. `npm run build-db` — seeds `scenarioDB.json` with real historical scenarios
-   across BTC, ETH, and the equity universe. Takes a few minutes.
+   across the 22-asset universe (BTC, ETH, SOL, XRP, DOGE, ADA, AVAX and 15
+   equities/ETFs). Takes a few minutes.
 4. `npm run snapshot` — writes the committed bars fallback. Re-run this before
    deploying if you want the fallback to be recent.
 5. `npm start`, then open http://localhost:3000
@@ -110,15 +111,16 @@ Run the real-browser suite (starts its own server on port 3111):
 
 ```bash
 npx playwright install chromium   # once
-npm test                          # 43 assertions
+npm test                          # 62 assertions
 npm run validate                  # walk-forward validation
 ```
 
-- `scenarioDB.json`: 9,446 scenarios across 10 assets, every entry carrying real
+- `scenarioDB.json`: 19,591 scenarios across 22 assets, every entry carrying real
   forward returns and drawdowns computed from historical bars. The file records
   its own `builtAt` timestamp — the UI reads that, never file mtime, which git
-  and Vercel both rewrite.
-- `npm run snapshot`: 10 symbols, 500 real daily bars each.
+  and Vercel both rewrite. Stored ratios are rounded to 6 decimals, which is
+  far below statistical noise and cuts the file roughly in half.
+- `npm run snapshot`: 22 symbols, 500 real daily bars each.
 - `npm test` drives Chromium: it boots the app, runs a full demo stress test,
   asserts every card renders with real data, checks the security headers, fires
   unsupported/path-traversal symbols at every endpoint, measures **actual

@@ -398,7 +398,12 @@ svg { display: block; }
 /* ============================================================================
    HERO — the ask panel
    ========================================================================== */
-.hero { padding: var(--space-8); }
+/* The hero holds the combo popup, which must float above everything that
+   follows it. .hero uses backdrop-filter, which creates a stacking context —
+   so the popup's own z-index cannot escape it. Giving the hero a higher layer
+   than the results region keeps the open list above the cards below. */
+.hero { padding: var(--space-8); position: relative; z-index: 20; }
+#results { position: relative; z-index: 10; }
 .eyebrow {
   display: inline-flex; align-items: center; gap: var(--space-2);
   font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.16em;
@@ -455,23 +460,125 @@ svg { display: block; }
 }
 .chip:hover { color: var(--fg); border-color: var(--border-strong); background: var(--surface-strong); }
 
+/* The three controls in this row are different components with different
+   intrinsic heights, so flex-end alignment left them visibly ragged. Every
+   control surface now shares .control-h, and the row aligns on a common
+   baseline instead of guessing at padding. */
 .controls {
-  display: flex; flex-wrap: wrap; gap: var(--space-5); align-items: flex-end;
+  display: flex; flex-wrap: wrap; gap: var(--space-5); align-items: flex-start;
   margin-top: var(--space-6); padding-top: var(--space-6); border-top: 1px solid var(--border);
 }
 .field { display: flex; flex-direction: column; gap: var(--space-2); }
-.field > label {
+.field > label, .field > .field-label {
+  display: flex; align-items: center; gap: var(--space-2);
   font-family: var(--font-mono); font-size: var(--text-xs);
   text-transform: uppercase; letter-spacing: 0.1em; color: var(--fg-muted);
+  min-height: 16px;
 }
 .field select, .field input {
   padding: var(--space-2) var(--space-3);
   background: var(--input-bg); border: 1px solid var(--input-border);
-  border-radius: var(--radius-sm); color: var(--fg); font-size: var(--text-base); min-width: 172px;
+  border-radius: var(--radius-sm); color: var(--fg); font-size: var(--text-base);
+  min-height: 40px; width: 100%;
   transition: border-color var(--duration-fast) var(--ease);
 }
+.field input::placeholder { color: var(--fg-subtle); }
 .field select:focus, .field input:focus { outline: none; border-color: var(--border-strong); }
+.field-catalyst { flex: 1 1 220px; max-width: 320px; }
+.seg { align-self: flex-start; }
 .detected { color: var(--fg); font-family: var(--font-mono); font-size: var(--text-xs); margin-left: var(--space-2); }
+
+/* ---------------------------------------------------------------------------
+   SYMBOL COMBOBOX
+   The control previously had no styles at all: the ticker and company name
+   collided ("AAPLApple"), the popup rendered as a transparent inline list that
+   pushed the page layout instead of floating above it, and the field was a
+   different height from its neighbours. It shares one control-height token
+   with the catalyst input and the segmented control so the row aligns.
+   --------------------------------------------------------------------------- */
+.control-h {
+  display: flex; align-items: center; gap: var(--space-2);
+  min-height: 40px; padding: 0 var(--space-3);
+  background: var(--input-bg); border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm); color: var(--fg);
+  transition: border-color var(--duration-fast) var(--ease),
+              background-color var(--duration-fast) var(--ease);
+}
+.combo { position: relative; }
+
+.combo-btn {
+  display: flex; align-items: center; gap: var(--space-2);
+  min-width: 210px; max-width: 100%; text-align: left; cursor: pointer;
+  font-size: var(--text-base);
+}
+.combo-btn:hover { border-color: var(--border-strong); }
+.combo-btn b { font-family: var(--font-mono); font-weight: 500; letter-spacing: -0.01em; }
+.combo-name {
+  color: var(--fg-muted); font-size: var(--text-md);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.combo-btn .chev { margin-left: auto; flex: none; color: var(--fg-subtle); --icon-size: 15px; }
+.combo-btn[aria-expanded='true'] .chev { transform: rotate(180deg); }
+.combo-btn .chev { transition: transform var(--duration-fast) var(--ease); }
+
+/* Detection notice. The ask box can silently rewrite the symbol, so when it
+   does we say so, and offer the undo. */
+/* Any explicit `display` on a component beats the UA stylesheet's
+   `[hidden] { display: none }`, so a `hidden` attribute silently stops hiding
+   anything that sets display itself. `.detect-note` did exactly this and showed
+   an empty "Using from your question" note on a fresh load. This one rule makes
+   the attribute authoritative everywhere. */
+[hidden] { display: none !important; }
+
+.detect-note {
+  display: flex; align-items: center; gap: var(--space-2);
+  margin-top: var(--space-2); font-size: var(--text-xs); color: var(--fg-muted);
+}
+.detect-note b { color: var(--fg); font-family: var(--font-mono); }
+.detect-note button {
+  font: inherit; color: var(--fg); background: none; border: 0; padding: 0;
+  cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+.detect-note button:hover { color: var(--fg-muted); }
+
+.combo-pop {
+  position: absolute; z-index: 40; top: calc(100% + 6px); left: 0;
+  width: max(100%, 288px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+/* The icon sits inside the filter field rather than above it, so the control
+   reads as one unit instead of wrapping onto its own line. */
+.combo-search { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); color: var(--fg-subtle); }
+.combo-search svg { flex: none; --icon-size: 15px; }
+.combo-search input {
+  width: 100%; padding: var(--space-2) var(--space-3);
+  background: var(--input-bg); border: 1px solid var(--input-border);
+  border-radius: var(--radius-xs); color: var(--fg); font-size: var(--text-md);
+}
+.combo-search input::placeholder { color: var(--fg-subtle); }
+.combo-search input:focus { outline: none; border-color: var(--border-strong); }
+
+.combo-list { list-style: none; margin: 0; padding: var(--space-1) 0; max-height: 288px; overflow-y: auto; }
+.combo-group {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--fg-subtle);
+}
+.combo-opt {
+  display: flex; align-items: baseline; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3); cursor: pointer; font-size: var(--text-md);
+}
+.combo-opt b { font-family: var(--font-mono); font-weight: 500; min-width: 4.5ch; }
+.combo-opt span { color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.combo-opt:hover, .combo-opt.active { background: var(--hover); }
+.combo-opt[aria-selected='true'] { box-shadow: inset 2px 0 0 var(--fg); }
+.combo-opt[aria-selected='true'] b { color: var(--fg); }
+.combo-opt mark { background: none; color: var(--fg); font-weight: 600; }
+.combo-empty { padding: var(--space-4) var(--space-3); color: var(--fg-muted); font-size: var(--text-md); }
 
 .seg { display: inline-flex; padding: 3px; gap: 3px; background: var(--surface-inset); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .seg label {
@@ -480,7 +587,15 @@ svg { display: block; }
   font-size: var(--text-base); color: var(--fg-muted); cursor: pointer;
   transition: background-color var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
 }
-.seg label input { position: absolute; opacity: 0; pointer-events: none; }
+/* The radios stay real inputs for keyboard and screen-reader semantics, but are
+   taken out of layout entirely. Sizing them to 1px matters: `opacity: 0` alone
+   left them claiming a 356px box, which pushed the whole control row wider
+   than a 390px viewport. */
+.seg label input {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap; border: 0; pointer-events: none;
+}
 .seg label:hover { color: var(--fg); }
 .seg label.on { background: var(--surface-strong); color: var(--fg); box-shadow: var(--shadow-sm); }
 
@@ -630,10 +745,45 @@ svg { display: block; }
    own precision. */
 .ring-ci { display: block; margin-top: 3px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0; text-transform: none; color: var(--fg-subtle); white-space: nowrap; }
 
-.spark { width: 100%; height: 108px; display: block; }
+.spark { width: 100%; height: 132px; display: block; touch-action: pan-y; }
 .spark .area { fill: var(--chart-area); }
 .spark .line { fill: none; stroke: var(--chart-line); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
 .spark .ma { fill: none; stroke: var(--fg-subtle); stroke-width: 1; stroke-dasharray: 3 4; }
+.spark .cross-v, .spark .cross-h { stroke: var(--fg-subtle); stroke-width: 1; opacity: 0; }
+.spark .dot { fill: var(--chart-line); stroke: var(--bg); stroke-width: 1.5; opacity: 0; }
+.spark-wrap { position: relative; }
+.spark-wrap[data-active='true'] .cross-v,
+.spark-wrap[data-active='true'] .cross-h { opacity: 1; }
+.spark-wrap[data-active='true'] .dot { opacity: 1; }
+
+.chart-tip {
+  position: absolute; z-index: 5; pointer-events: none;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-elevated); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs); box-shadow: var(--shadow-md);
+  font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.5;
+  white-space: nowrap; opacity: 0; transform: translate(-50%, -100%);
+  transition: opacity var(--duration-fast) var(--ease);
+}
+.chart-tip.on { opacity: 1; }
+.chart-tip b { font-weight: 500; }
+.chart-tip .up { color: var(--success); }
+.chart-tip .down { color: var(--danger); }
+
+.chart-legend { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-top: var(--space-2); }
+.chart-legend .lg { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--fg-muted); font-size: var(--text-xs); }
+.chart-legend .swatch-line { width: 14px; height: 0; border-top: 1.6px solid var(--chart-line); }
+.chart-legend .swatch-dash { width: 14px; height: 0; border-top: 1px dashed var(--fg-subtle); }
+.range-seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--surface-inset); border: 1px solid var(--border); border-radius: var(--radius-xs); }
+.range-seg button {
+  font: inherit; font-family: var(--font-mono); font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2); border: 0; border-radius: 3px;
+  background: none; color: var(--fg-muted); cursor: pointer; min-height: 24px;
+  transition: background-color var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+}
+.range-seg button:hover { color: var(--fg); }
+.range-seg button[aria-pressed='true'] { background: var(--surface-strong); color: var(--fg); }
 
 .bars { display: flex; align-items: flex-end; gap: var(--space-2); height: 132px; }
 .bars-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: var(--space-2); }
@@ -708,6 +858,12 @@ tbody tr:hover { background: var(--hover); }
   .btn-primary { padding: var(--space-4); }
   .brand .tagline { display: none; }
   .ring-box, .ring { width: 112px; height: 112px; }
+/* Controls fill the column on narrow screens. The combo's 210px min-width
+   would otherwise push the control row wider than the viewport. */
+.controls { gap: var(--space-4); }
+.field, .combo, .combo-btn { width: 100%; min-width: 0; }
+.combo-pop { width: 100%; }
+.field-catalyst { max-width: none; }
 
   /* The rail becomes a floating glass dock within thumb reach. */
   .mobile-nav {
@@ -871,10 +1027,14 @@ body { font-variant-numeric: tabular-nums; }
         <div class="field">
           <label for="comboBtn">Symbol <span class="detected" id="detected"></span></label>
           <div class="combo" id="combo">
-            <button type="button" class="combo-btn" id="comboBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="comboList">
+            <button type="button" class="combo-btn control-h" id="comboBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="comboList">
               <b id="comboSym">—</b><span class="combo-name" id="comboName"></span>
-              <i data-lucide="chevron-down" style="--icon-size:16px"></i>
+              <i data-lucide="chevron-down" class="chev" aria-hidden="true"></i>
             </button>
+            <div class="detect-note" id="detectNote" hidden>
+              <span>Using <b id="detectSym"></b> from your question</span>
+              <button type="button" id="detectUndo">change</button>
+            </div>
             <div class="combo-pop" id="comboPop" hidden>
               <div class="combo-search">
                 <i data-lucide="search" style="--icon-size:15px"></i>
@@ -887,30 +1047,18 @@ body { font-variant-numeric: tabular-nums; }
             </div>
           </div>
           <select id="symbol" style="display:none" tabindex="-1" aria-hidden="true">
-            <optgroup label="Equities">
-              <option value="AAPL">AAPL</option>
-              <option value="TSLA">TSLA</option>
-              <option value="NVDA">NVDA</option>
-              <option value="MSFT">MSFT</option>
-              <option value="AMZN">AMZN</option>
-              <option value="GOOGL">GOOGL</option>
-              <option value="META">META</option>
-              <option value="SPY">SPY</option>
-            </optgroup>
-            <optgroup label="Crypto">
-              <option value="BTC">BTC</option>
-              <option value="ETH">ETH</option>
-            </optgroup>
+            <optgroup label="Equities"></optgroup>
+            <optgroup label="Crypto"></optgroup>
           </select>
         </div>
 
-        <div class="field">
+        <div class="field field-catalyst">
           <label for="catalyst">Catalyst (optional)</label>
-          <input id="catalyst" placeholder="earnings, rate decision, launch" />
+          <input id="catalyst" placeholder="earnings, rate decision" />
         </div>
 
         <div class="field">
-          <span class="field-label" id="scopeLabel" style="font-family:var(--font-mono);font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.1em;color:var(--fg-muted);">Analogue universe</span>
+          <span class="field-label" id="scopeLabel">Analogue universe</span>
           <div class="seg" id="scopeSeg" role="radiogroup" aria-labelledby="scopeLabel">
             <label class="on"><input type="radio" name="scope" value="all" checked /> All assets</label>
             <label><input type="radio" name="scope" value="same" /> This asset</label>
@@ -960,7 +1108,35 @@ body { font-variant-numeric: tabular-nums; }
   const historyRow = $('history');
   const toastEl = $('toast');
 
-  const SYMBOLS = [...symbolSelect.options].map(o => o.value);
+  // Declared here and filled in populateSymbols() once the select is populated.
+  // The asset block below sets the option elements; this stays in sync with them.
+  let SYMBOLS = [];
+  // Reconcile the built-in asset list against the server's allowlist. The
+  // options are already in the DOM (populated above, above the first use), so
+  // this only has to drop anything the server would reject and refresh SYMBOLS
+  // and the picker. A mismatch here means the two lists have drifted, which is
+  // the failure worth surfacing loudly in development.
+  async function populateSymbols() {
+    try {
+      const res = await fetch('/api/meta');
+      if (!res.ok) throw new Error('meta unavailable');
+      const meta = await res.json();
+      if (!Array.isArray(meta.supportedSymbols)) throw new Error('no supportedSymbols');
+      const allowed = new Set(meta.supportedSymbols);
+      for (const opt of [...symbolSelect.options]) {
+        if (!allowed.has(opt.value)) {
+          console.warn(`Asset ${opt.value} is in the UI but not the server allowlist; hiding it.`);
+          opt.remove();
+        }
+      }
+    } catch (err) {
+      // Keep the built-in list on failure: the server rejects anything
+      // unsupported anyway, so an extra local option can only 400, never leak.
+      console.warn('Could not confirm the asset universe with the server:', err.message);
+    }
+    SYMBOLS = [...symbolSelect.options].map(o => o.value);
+    buildCombo();
+  }
   const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---- asset combobox --------------------------------------------------------
@@ -969,11 +1145,42 @@ body { font-variant-numeric: tabular-nums; }
   const ASSET_NAMES = {
     AAPL: 'Apple', TSLA: 'Tesla', NVDA: 'NVIDIA', MSFT: 'Microsoft',
     AMZN: 'Amazon', GOOGL: 'Alphabet (Google)', META: 'Meta', SPY: 'S&P 500 ETF',
-    BTC: 'Bitcoin', ETH: 'Ethereum',
+    QQQ: 'Nasdaq 100 ETF', IWM: 'Russell 2000 ETF', AMD: 'AMD', NFLX: 'Netflix',
+    COIN: 'Coinbase', PLTR: 'Palantir', TSM: 'TSMC',
+    BTC: 'Bitcoin', ETH: 'Ethereum', SOL: 'Solana', XRP: 'XRP',
+    DOGE: 'Dogecoin', ADA: 'Cardano', AVAX: 'Avalanche',
   };
+  // The asset universe lives here, above every consumer. SYMBOLS below is
+  // initialised from DETECTABLE, so a const declared after it would be in the
+  // temporal dead zone and would throw on boot.
+  const ASSET_GROUPS = {
+    Equities: ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NVDA', 'AMD', 'NFLX',
+      'COIN', 'PLTR', 'TSM', 'TSLA', 'SPY', 'QQQ', 'IWM'],
+    Crypto: ['BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX'],
+  };
+  const DETECTABLE = [...ASSET_GROUPS.Equities, ...ASSET_GROUPS.Crypto];
+  // The option elements are filled here, above every consumer, so SYMBOLS and
+  // the picker never observe an empty <select>. They are reconciled against the
+  // server allowlist later, in populateSymbols().
+  for (const [label, syms] of Object.entries(ASSET_GROUPS)) {
+    const og = [...symbolSelect.querySelectorAll('optgroup')].find(g => g.label === label);
+    if (og) og.innerHTML = syms.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
   const comboBtn = $('comboBtn'), comboPop = $('comboPop'), comboSearch = $('comboSearch'),
         comboList = $('comboList'), comboEmpty = $('comboEmpty');
   let comboActive = -1;
+
+  // The ask box can silently rewrite the symbol. That is helpful, but the user
+  // picked an asset and the control changed without them touching it, so the
+  // change is surfaced as a notice with an undo. The notice is raised by the
+  // detection path only — a deliberate pick, a history chip, the demo and a
+  // deep link are all silent, because the user already knows what they chose.
+  function showDetectNote(sym) {
+    const note = $('detectNote');
+    if (!note) return;
+    note.hidden = !sym;
+    if (sym) $('detectSym').textContent = sym;
+  }
 
   function setSymbol(sym) {
     const opt = [...symbolSelect.options].find(o => o.value === sym);
@@ -985,19 +1192,37 @@ body { font-variant-numeric: tabular-nums; }
       li.setAttribute('aria-selected', String(li.dataset.sym === sym)));
   }
 
+  // Recently used assets float to the top, because the asset someone just ran
+  // is overwhelmingly the one they want again. Recency is read from the same
+  // history list the chips use, so the two can never disagree.
+  function recentSymbols() {
+    return readHistory().map(h => h && h.symbol).filter(Boolean);
+  }
+
   function buildCombo() {
     const groups = [...symbolSelect.querySelectorAll('optgroup')].map(g => ({
       // NOTE: <optgroup>.options is not part of the HTMLOptGroupElement spec —
       // reading it crashes the page script at startup. Query the children instead.
       label: g.label, items: [...g.querySelectorAll('option')].map(o => ({ sym: o.value, name: ASSET_NAMES[o.value] || o.value })),
     }));
+    const bySym = new Map();
+    groups.forEach(g => g.items.forEach(it => bySym.set(it.sym, it)));
+    const recent = [...new Set(recentSymbols())].filter(s => bySym.has(s)).map(s => bySym.get(s));
+    const recentSet = new Set(recent.map(r => r.sym));
+    const rest = groups
+      .map(g => ({ ...g, items: g.items.filter(it => !recentSet.has(it.sym)) }))
+      .filter(g => g.items.length);
+
     let idx = 0;
-    comboList.innerHTML = groups.map(g => `
-      <li role="presentation" class="combo-group" data-group="${g.label}">${g.label}</li>` +
-      g.items.map(it => `
-      <li role="option" class="combo-opt" id="combo-opt-${idx}" data-sym="${it.sym}" data-name="${it.name}"
+    const optHtml = it => `
+      <li role="option" class="combo-opt" id="combo-opt-${idx++}" data-sym="${it.sym}" data-name="${it.name}"
           data-search="${(it.sym + ' ' + it.name).toLowerCase()}" aria-selected="false">
-        <b>${it.sym}</b><span>${it.name}</span></li>`).join('')).join('');
+        <b>${it.sym}</b><span>${it.name}</span></li>`;
+    const headHtml = label => `<li role="presentation" class="combo-group" data-group="${label}">${label}</li>`;
+
+    comboList.innerHTML =
+      (recent.length ? headHtml('Recent') + recent.map(optHtml).join('') : '') +
+      rest.map(g => headHtml(g.label) + g.items.map(optHtml).join('')).join('');
     setSymbol(symbolSelect.value || symbolSelect.options[0].value);
   }
 
@@ -1032,11 +1257,20 @@ body { font-variant-numeric: tabular-nums; }
   function comboPick(li) {
     if (!li) return;
     setSymbol(li.dataset.sym);
+    // A deliberate pick supersedes detection, so the undo notice has served
+    // its purpose and should not linger.
+    showDetectNote(null);
+    delete symbolSelect.dataset.detected;
     comboOpen(false);
     comboBtn.focus();
   }
 
   buildCombo();
+  // "change" in the detection notice reopens the picker focused on the asset
+  // detection just chose, so overriding it is one click rather than a hunt.
+  $('detectUndo')?.addEventListener('click', () => {
+    comboOpen(true);
+  });
   comboBtn.addEventListener('click', () => comboOpen(comboPop.hidden));
   comboSearch.addEventListener('input', () => comboFilter(comboSearch.value));
   comboSearch.addEventListener('keydown', event => {
@@ -1111,12 +1345,15 @@ body { font-variant-numeric: tabular-nums; }
   // Track 3 is pitched as a natural-language-driven workbench, so the symbol is
   // inferred from the typed question; the dropdown stays as a manual override.
   const ALIASES = {
-    BITCOIN: 'BTC', ETHEREUM: 'ETH', GOOGLE: 'GOOGL', ALPHABET: 'GOOGL',
-    APPLE: 'AAPL', TESLA: 'TSLA', NVIDIA: 'NVDA', MICROSOFT: 'MSFT',
-    AMAZON: 'AMZN', FACEBOOK: 'META',
+    BITCOIN: 'BTC', ETHEREUM: 'ETH', SOLANA: 'SOL', DOGECOIN: 'DOGE',
+    CARDANO: 'ADA', AVALANCHE: 'AVAX',
+    GOOGLE: 'GOOGL', ALPHABET: 'GOOGL', APPLE: 'AAPL', TESLA: 'TSLA',
+    NVIDIA: 'NVDA', MICROSOFT: 'MSFT', AMAZON: 'AMZN', FACEBOOK: 'META',
+    NETFLIX: 'NFLX', PALANTIR: 'PLTR', COINBASE: 'COIN',
   };
   const ALIAS_PHRASES = [
     ['S&P500', 'SPY'], ['S&P 500', 'SPY'], ['S&P', 'SPY'], ['SP500', 'SPY'], ['SPX', 'SPY'],
+    ['NASDAQ 100', 'QQQ'], ['NASDAQ', 'QQQ'], ['RUSSELL 2000', 'IWM'], ['SMALL CAPS', 'IWM'],
   ];
 
   function wordHit(upper, token) {
@@ -1136,8 +1373,15 @@ body { font-variant-numeric: tabular-nums; }
     const found = detectSymbol(questionInput.value);
     if (found) {
       setSymbol(found);
+      // Only raise the notice when detection actually moved the asset. Typing
+      // more text that keeps resolving to the same symbol is not a new change
+      // and should not flash an undo at the user on every keystroke.
+      if (found !== symbolSelect.dataset.detected) showDetectNote(found);
+      symbolSelect.dataset.detected = found;
       detectedLabel.textContent = `detected ${found}`;
     } else {
+      showDetectNote(null);
+      delete symbolSelect.dataset.detected;
       detectedLabel.textContent = '';
     }
   });
@@ -1148,6 +1392,16 @@ body { font-variant-numeric: tabular-nums; }
       questionInput.dispatchEvent(new Event('input'));
       questionInput.focus();
     });
+  });
+
+  // "change" beside the detection notice reopens the picker at the current
+  // asset, so overriding the detection is one click rather than a hunt.
+  const detectUndo = $('detectUndo');
+  if (detectUndo) detectUndo.addEventListener('click', () => {
+    userPickedSymbol = true;
+    showDetectNote(null);
+    detectedLabel.textContent = '';
+    comboOpen(true);
   });
 
   function setScope(value) {
@@ -1186,6 +1440,10 @@ body { font-variant-numeric: tabular-nums; }
     const list = readHistory().filter(x => !(x.q === entry.q && x.symbol === entry.symbol));
     list.unshift(entry);
     try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 5))); } catch (e) { /* ignore */ }
+    // The picker's Recent group is derived from this same list, so it has to be
+    // rebuilt whenever history changes — otherwise the first run of a session
+    // leaves the picker permanently showing no Recent group.
+    buildCombo();
     renderHistory();
   }
   function renderHistory() {
@@ -1311,26 +1569,166 @@ body { font-variant-numeric: tabular-nums; }
 
   // Real price action: the last 120 closes we actually fetched, with a 50-day
   // mean for context.
+  // Interactive price chart. Real closes, a 50-day mean, and a crosshair that
+  // reports the actual date/close/change at the pointer. The range control
+  // changes how much history is in view, which is a real analytical control
+  // rather than decoration: the old fixed 120-session window could not answer
+  // "what did this look like six months ago".
+  const RANGES = [
+    { key: '1m', label: '1M', bars: 22 },
+    { key: '3m', label: '3M', bars: 66 },
+    { key: '6m', label: '6M', bars: 132 },
+    { key: '1y', label: '1Y', bars: 252 },
+  ];
+  let chartState = { bars: [], range: '6m' };
+
+  function chartWindow(bars, rangeKey) {
+    const r = RANGES.find(x => x.key === rangeKey) || RANGES[2];
+    return bars.slice(-r.bars);
+  }
+
   function sparkline(bars) {
-    const series = bars.map(b => b.close).slice(-120);
-    if (series.length < 2) return '';
-    const w = 600, h = 108, pad = 8;
-    const min = Math.min(...series);
-    const max = Math.max(...series);
+    if (!bars || bars.length < 2) return '';
+    chartState = { bars, range: chartState.range || '6m' };
+    return `
+      <div class="spark-wrap" data-active="false" id="chartWrap">
+        <svg class="spark" viewBox="0 0 600 132" preserveAspectRatio="none"
+             role="img" aria-label="Daily close price with a 50-day mean. Use the range buttons to change the window.">
+          <polygon class="area" points="" vector-effect="non-scaling-stroke"></polygon>
+          <polyline class="ma" points="" vector-effect="non-scaling-stroke"></polyline>
+          <polyline class="line" points="" vector-effect="non-scaling-stroke"></polyline>
+          <line class="cross-h" x1="0" y1="0" x2="600" y2="0"></line>
+          <line class="cross-v" x1="0" y1="0" x2="0" y2="132"></line>
+          <circle class="dot" cx="0" cy="0" r="3.2"></circle>
+        </svg>
+        <div class="chart-tip" id="chartTip" role="status" aria-live="off"></div>
+      </div>
+      <div class="chart-legend">
+        <span class="lg"><span class="swatch-line"></span>Close</span>
+        <span class="lg"><span class="swatch-dash"></span>50-day mean</span>
+        <span class="lg" style="margin-left:auto">
+          <div class="range-seg" id="rangeSeg" role="group" aria-label="Chart range">
+            ${RANGES.map(r => `<button type="button" data-range="${r.key}"
+              aria-pressed="${r.key === chartState.range}">${r.label}</button>`).join('')}
+          </div>
+        </span>
+      </div>`;
+  }
+
+  // Redraw from the current range. Kept separate from sparkline() so the range
+  // buttons re-render the plot without rebuilding the surrounding card.
+  function drawChart() {
+    const wrap = $('chartWrap');
+    const svg = wrap && wrap.querySelector('svg');
+    if (!svg) return;
+    const slice = chartWindow(chartState.bars, chartState.range);
+    if (slice.length < 2) return;
+
+    const w = 600, h = 132, pad = 8;
+    const closes = slice.map(b => b.close);
+    const min = Math.min(...closes), max = Math.max(...closes);
     const span = (max - min) || 1;
-    const x = i => (i / (series.length - 1)) * w;
+    const x = i => (i / (slice.length - 1)) * w;
     const y = v => pad + (1 - (v - min) / span) * (h - pad * 2);
-    const line = series.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-    const ma = series.map((_, i) => {
-      const slice = series.slice(Math.max(0, i - 49), i + 1);
-      return slice.reduce((a, b) => a + b, 0) / slice.length;
+
+    const line = closes.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const ma = closes.map((_, i) => {
+      const s = closes.slice(Math.max(0, i - 49), i + 1);
+      return s.reduce((a, b) => a + b, 0) / s.length;
     });
     const maLine = ma.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Price, last ${series.length} sessions">
-      <polygon class="area" points="0,${h} ${line} ${w},${h}" vector-effect="non-scaling-stroke"></polygon>
-      <polyline class="ma" points="${maLine}" vector-effect="non-scaling-stroke"></polyline>
-      <polyline class="line" points="${line}" vector-effect="non-scaling-stroke"></polyline>
-    </svg>`;
+
+    svg.querySelector('.area').setAttribute('points', `0,${h} ${line} ${w},${h}`);
+    svg.querySelector('.line').setAttribute('points', line);
+    svg.querySelector('.ma').setAttribute('points', maLine);
+
+    wrap._geom = { slice, x, y, w, h };
+    // Clear the inline position as well as the visible state. A tooltip left at
+    // a stale offset keeps contributing to the page's scroll width after the
+    // card has been resized or re-laid out.
+    wrap.setAttribute('data-active', 'false');
+    const tip = $('chartTip');
+    if (tip) {
+      tip.classList.remove('on');
+      tip.style.left = '';
+      tip.style.top = '';
+    }
+  }
+
+  function chartInspect(wrap, clientX) {
+    const g = wrap._geom;
+    if (!g) return;
+    const rect = wrap.getBoundingClientRect();
+    if (!rect.width) return;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const i = Math.round(ratio * (g.slice.length - 1));
+    const bar = g.slice[i];
+    if (!bar) return;
+    const first = g.slice[0].close;
+    const chg = first ? (bar.close - first) / first : 0;
+
+    const px = (g.x(i) / g.w) * rect.width;
+    const py = (g.y(bar.close) / g.h) * rect.height;
+    const svg = wrap.querySelector('svg');
+    svg.querySelector('.cross-v').setAttribute('x1', g.x(i));
+    svg.querySelector('.cross-v').setAttribute('x2', g.x(i));
+    svg.querySelector('.cross-h').setAttribute('y1', g.y(bar.close));
+    svg.querySelector('.cross-h').setAttribute('y2', g.y(bar.close));
+    svg.querySelector('.dot').setAttribute('cx', g.x(i));
+    svg.querySelector('.dot').setAttribute('cy', g.y(bar.close));
+    wrap.setAttribute('data-active', 'true');
+
+    const tip = $('chartTip');
+    if (!tip) return;
+    const sign = chg > 0 ? 'up' : chg < 0 ? 'down' : '';
+    tip.innerHTML = `${escapeHtml(bar.date)}<br /><b>${num(bar.close)}</b> ` +
+      `<span class="${sign}">${chg >= 0 ? '+' : ''}${(chg * 100).toFixed(1)}%</span>`;
+    // Keep the tooltip inside the chart. The half-width is measured rather than
+    // assumed: a fixed guess pushed the tooltip outside a narrow card and caused
+    // a horizontal page scroll on mobile.
+    tip.classList.add('on');
+    const half = tip.offsetWidth / 2;
+    const pad = 4;
+    const minX = Math.min(half + pad, rect.width / 2);
+    const maxX = Math.max(rect.width - half - pad, rect.width / 2);
+    tip.style.left = `${Math.max(minX, Math.min(maxX, px))}px`;
+    tip.style.top = `${Math.max(tip.offsetHeight + 4, py - 8)}px`;
+  }
+
+  function bindChart() {
+    const wrap = $('chartWrap');
+    if (!wrap) return;
+    drawChart();
+
+    // Pointer events cover mouse, pen and touch in one path. The SVG sets
+    // touch-action: pan-y, so a vertical swipe still scrolls the page instead
+    // of being swallowed by the chart.
+    const hideTip = () => {
+      wrap.setAttribute('data-active', 'false');
+      const tip = $('chartTip');
+      if (tip) {
+        tip.classList.remove('on');
+        tip.style.left = '';
+        tip.style.top = '';
+      }
+    };
+    wrap.addEventListener('pointermove', e => chartInspect(wrap, e.clientX));
+    wrap.addEventListener('pointerdown', e => chartInspect(wrap, e.clientX));
+    wrap.addEventListener('pointerleave', hideTip);
+    // A resize invalidates the pointer's position, so the crosshair is dropped
+    // rather than left pointing at a coordinate that no longer maps to a bar.
+    window.addEventListener('resize', hideTip, { passive: true });
+
+    const seg = $('rangeSeg');
+    if (!seg) return;
+    seg.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-range]');
+      if (!btn) return;
+      chartState.range = btn.dataset.range;
+      seg.querySelectorAll('button').forEach(b =>
+        b.setAttribute('aria-pressed', String(b === btn)));
+      drawChart();
+    });
   }
 
   // Where the analogues' next-20-day outcomes actually landed.
@@ -1687,7 +2085,7 @@ body { font-variant-numeric: tabular-nums; }
             </div>
           </div>
           ${sparkline(barsData.bars)}
-          <div class="card-note" style="margin-top:var(--space-2);">Last 120 closes against the 50-day mean (dashed).</div>
+          <div class="card-note" style="margin-top:var(--space-2);">Hover or tap the chart for the close and change on any session.</div>
           <div class="kv-2col" style="margin-top:var(--space-4);">
             ${kv('MA50', num(f.ma50))}
             ${kv('MA200', num(f.ma200))}
@@ -1747,6 +2145,9 @@ body { font-variant-numeric: tabular-nums; }
 
       </div>`;
       lucide.createIcons();
+      // The chart is interactive, so its listeners attach after the card
+      // markup exists rather than at page load.
+      bindChart();
       pushHistory({ symbol, q: question, scope: scopeValue });
       syncUrl(symbol, question, scopeValue);
 
@@ -1839,7 +2240,10 @@ body { font-variant-numeric: tabular-nums; }
     run();
   });
 
-  restoreFromUrl();
+    // The asset list is fetched before the deep link is restored, so a shared
+    // link to a newly added symbol resolves instead of being ignored by an
+    // empty picker.
+    populateSymbols().finally(restoreFromUrl);
 
 
 

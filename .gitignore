@@ -4,3 +4,9 @@ node_modules/
 npm-debug.log
 *.log
 .DS_Store
+
+# Local runtime + verification artifacts
+pid.txt
+srv.out
+srv.err
+.shots/

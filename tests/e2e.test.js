@@ -77,15 +77,35 @@ async function main() {
 
     // --- 1. Boot -------------------------------------------------------------
     console.log('boot');
-    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(
-      () => document.querySelector('#scenarioCount')?.textContent?.match(/\d/),
-      null, { timeout: 20000 }
-    );
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(3000);
+  if (consoleErrors.length) {
+    console.log('\n  console errors on boot:');
+    consoleErrors.forEach(e => console.log('    ' + e.slice(0, 200)));
+  }
+  const bootState = await page.evaluate(() => ({
+    scenarioCount: document.querySelector('#scenarioCount')?.textContent,
+    options: document.querySelectorAll('#symbol option').length,
+    comboSym: document.querySelector('#comboSym')?.textContent,
+  }));
+  console.log('  boot state:', JSON.stringify(bootState));
+  await page.waitForFunction(
+    () => document.querySelector('#scenarioCount')?.textContent?.match(/\d/),
+    null, { timeout: 20000 }
+  );
     const scenarioChip = await page.textContent('#scenarioCount');
     check('scenario count chip is populated', /\d/.test(scenarioChip || ''), scenarioChip);
     check('scenario count is plausible (>1000)',
       parseInt((scenarioChip || '').replace(/\D/g, ''), 10) > 1000, scenarioChip);
+    // Nothing has been typed yet, so the detection notice must be absent. It
+    // used to render on every fresh load with an empty asset name.
+    check('detection notice absent on a fresh load',
+      await page.evaluate(() => {
+        const n = document.querySelector('#detectNote');
+        return !n || getComputedStyle(n).display === 'none';
+      }));
+    check('asset picker is populated from the server allowlist',
+      bootState.options >= 20, `${bootState.options} options`);
 
     // --- 2. Security headers -------------------------------------------------
     console.log('\nsecurity headers');
@@ -177,12 +197,102 @@ async function main() {
     const briefText = await page.textContent('#card-brief');
     check('brief rendered as prose', (briefText || '').length > 200);
 
+    // A `hidden` attribute must actually hide. A component rule with its own
+    // `display` silently overrides the UA stylesheet, so the detection note
+    // rendered an empty "Using from your question" on a fresh page. Asserting
+    // the rule directly means the next component with the same mistake cannot
+    // reintroduce it unnoticed. (The fresh-load state of the note itself is
+    // asserted in the boot section, before anything is typed.)
+    const hiddenRespected = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.hidden = true;
+      probe.style.display = 'flex';
+      document.body.appendChild(probe);
+      const shown = getComputedStyle(probe).display !== 'none';
+      probe.remove();
+      return shown;
+    });
+    check('hidden attribute beats a component display rule', !hiddenRespected);
+
     // --- 7. Degraded snapshot mode ------------------------------------------
     console.log('\ndegraded snapshot mode');
     const snap = await page.request.get(`${BASE}/api/bars?symbol=BTC&snapshot=1`);
     const snapJson = await snap.json();
     check('snapshot mode serves bars', snapJson.bars?.length >= 200, `${snapJson.bars?.length}`);
     check('snapshot mode labels its source honestly', snapJson.source === 'snapshot', String(snapJson.source));
+
+    // --- 7b. Combobox: styling, recents, and the detection notice -----------
+    console.log('\ncombobox behaviour');
+    const comboStyle = await page.evaluate(() => {
+      const btn = document.querySelector('#comboBtn');
+      const cs = getComputedStyle(btn);
+      const name = document.querySelector('#comboName');
+      return {
+        minHeight: cs.minHeight,
+        hasBg: cs.backgroundColor !== 'rgba(0, 0, 0, 0)',
+        // The ticker and the company name must be visually separated. They
+        // rendered as "AAPLApple" before the combobox had any CSS.
+        gap: cs.gap,
+        nameGapOk: name.getBoundingClientRect().left > document.querySelector('#comboSym').getBoundingClientRect().right,
+        popupPosition: getComputedStyle(document.querySelector('#comboPop')).position,
+      };
+    });
+    check('combo button has a real surface', comboStyle.hasBg, JSON.stringify(comboStyle));
+    check('combo button is full control height', parseFloat(comboStyle.minHeight) >= 36, comboStyle.minHeight);
+    check('ticker and company name do not collide', comboStyle.nameGapOk);
+    check('popup floats (absolute), not in flow', comboStyle.popupPosition === 'absolute', comboStyle.popupPosition);
+
+    await page.click('#comboBtn');
+    await page.waitForTimeout(250);
+    check('popup opens', await page.isVisible('#comboPop'));
+    const optionCount = (await page.$$('#comboList [role="option"]')).length;
+    check('picker lists the expanded universe', optionCount >= 20, `${optionCount} options`);
+    // A run earlier pushed NVDA into history, so a Recent group must be on top.
+    const groups = await page.$$eval('#comboList [data-group]', els => els.map(e => e.textContent.trim()));
+    check('recent assets are grouped first', groups[0] === 'Recent', groups.join(','));
+    await page.click('#comboBtn');
+    await page.waitForTimeout(200);
+
+    await page.fill('#question', 'Should I open a long in Solana here?');
+    await page.waitForTimeout(300);
+    const detect = await page.evaluate(() => ({
+      sym: document.querySelector('#symbol').value,
+      noteHidden: document.querySelector('#detectNote').hidden,
+      noteText: document.querySelector('#detectNote').textContent.replace(/\s+/g, ' ').trim(),
+    }));
+    check('new ticker detected from prose', detect.sym === 'SOL', detect.sym);
+    check('detection is disclosed, not silent', !detect.noteHidden && /SOL/.test(detect.noteText), detect.noteText);
+    await page.click('#detectUndo');
+    await page.waitForTimeout(200);
+    check('"change" reopens the picker', await page.isVisible('#comboPop'));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+
+    // --- 7c. Interactive chart ---------------------------------------------
+    console.log('\ninteractive chart');
+    check('range control rendered', (await page.$$('#rangeSeg button')).length === 4);
+    const beforeRange = await page.getAttribute('#card-price .line', 'points');
+    await page.click('#rangeSeg button[data-range="1m"]');
+    await page.waitForTimeout(250);
+    const afterRange = await page.getAttribute('#card-price .line', 'points');
+    check('1M redraws a shorter window', beforeRange !== afterRange && afterRange.length < beforeRange.length,
+      `6m=${beforeRange?.length}ch 1m=${afterRange?.length}ch`);
+    check('active range is announced', await page.getAttribute('#rangeSeg button[data-range="1m"]', 'aria-pressed') === 'true');
+    await page.click('#rangeSeg button[data-range="6m"]');
+    await page.waitForTimeout(250);
+
+    const box = await page.locator('#chartWrap').boundingBox();
+    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2);
+    await page.waitForTimeout(250);
+    const inspect = await page.evaluate(() => ({
+      active: document.querySelector('#chartWrap').getAttribute('data-active'),
+      tipOn: document.querySelector('#chartTip').classList.contains('on'),
+      tip: document.querySelector('#chartTip').textContent.replace(/\s+/g, ' ').trim(),
+      crossX: document.querySelector('#chartWrap .cross-v').getAttribute('x1'),
+    }));
+    check('crosshair activates on hover', inspect.active === 'true');
+    check('tooltip shows a real date and change', /\d{4}-\d{2}-\d{2}/.test(inspect.tip) && /%/.test(inspect.tip), inspect.tip);
+    check('crosshair is positioned', parseFloat(inspect.crossX) > 0, inspect.crossX);
 
     // --- 8. Theme, measured contrast, responsive ------------------------------
     console.log('\ntheme, measured contrast, responsive');
@@ -286,8 +396,34 @@ async function main() {
     const railHidden = await page.isHidden('.rail').catch(() => false);
     check('mobile layout switches away from the rail', mobileNavVisible || railHidden,
       `nav=${mobileNavVisible} railHidden=${railHidden}`);
-    const noOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2);
-    check('no horizontal overflow at 390px', noOverflow);
+    const overflow = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      const wide = [];
+      document.querySelectorAll('body *').forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return;
+        if (r.right > vw + 2) {
+          // Only report elements whose own right edge escapes; a wide child
+          // inside an overflow-x:auto ancestor is legitimately scrollable.
+          let clipped = false;
+          for (let p = el.parentElement; p; p = p.parentElement) {
+            const ov = getComputedStyle(p).overflowX;
+            if (ov === 'auto' || ov === 'scroll' || ov === 'hidden') { clipped = true; break; }
+          }
+          if (!clipped) {
+            const chain = [];
+            for (let p = el; p && p !== document.body; p = p.parentElement) {
+              chain.push(`${p.tagName}#${p.id || ''}.${(p.className || '').toString().split(' ')[0]}`);
+              if (chain.length >= 4) break;
+            }
+            wide.push(`${chain.join(' < ')} [w=${Math.round(r.width)} right=${Math.round(r.right)}]`);
+          }
+        }
+      });
+      return { vw, scrollW: document.documentElement.scrollWidth, wide: wide.slice(0, 8) };
+    });
+    check('no horizontal overflow at 390px', overflow.scrollW <= overflow.vw + 2,
+      `vw=${overflow.vw} scrollW=${overflow.scrollW} :: ${overflow.wide.join(' | ')}`);
 
     // --- 9. Runtime hygiene --------------------------------------------------
     console.log('\nruntime hygiene');

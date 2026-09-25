@@ -6,10 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { fetchCryptoDaily, fetchEquityDaily } = require('../lib/dataIngest');
-
-const CRYPTO_SYMBOLS = ['BTC', 'ETH'];
-const EQUITY_SYMBOLS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'GOOGL', 'META', 'SPY'];
+const { fetchCryptoDaily, fetchEquityDaily, EQUITY_SYMBOLS, CRYPTO_SYMBOLS } = require('../lib/dataIngest');
 // The regime classifier needs 200 bars; keep extra trailing history so the
 // snapshot can still classify a regime and derive a meaningful ATR percentile.
 const KEEP_BARS = 500;

@@ -197,6 +197,22 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 
+/* Browser surfaces. The parts of a page nobody draws still carry the design —
+   selection, caret, scrollbars and native control accents ship with browser
+   defaults that belong to no design system. Theming these from the same tokens
+   is the cheapest signal that the page was built rather than assembled. */
+::selection { background: var(--fg); color: var(--bg); }
+:root { accent-color: var(--fg); color-scheme: light dark; }
+[data-theme='dark'] { color-scheme: dark; }
+[data-theme='light'] { color-scheme: light; }
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; border: 3px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--fg-subtle); background-clip: content-box; }
+input, textarea, select, button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; border-radius: 2px; }
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -609,6 +625,10 @@ svg { display: block; }
 .ring-val { position: absolute; text-align: center; }
 .ring-val b { display: block; font-family: var(--font-mono); font-size: var(--text-2xl); font-weight: 500; line-height: 1.1; }
 .ring-val span { font-size: var(--text-xs); color: var(--fg-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+/* The Wilson interval sits inside the ring, below the label. It is the width
+   of the headline number — without it a small-sample win rate overstates its
+   own precision. */
+.ring-ci { display: block; margin-top: 3px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0; text-transform: none; color: var(--fg-subtle); white-space: nowrap; }
 
 .spark { width: 100%; height: 108px; display: block; }
 .spark .area { fill: var(--chart-area); }
@@ -1267,18 +1287,25 @@ body { font-variant-numeric: tabular-nums; }
   // ---- data viz -------------------------------------------------------------
   // Win-rate ring. Colour is used only to signal direction (above/below a coin
   // flip); everything else is one ink, so the page stays calm.
-  function ring(value, label) {
+  // `ci` is the 95% Wilson interval for the same proportion. It is rendered
+  // under the value rather than hidden, because a bare "83%" from n=12 reads
+  // far more precise than it is — the interval is the honest width of that
+  // number, and it is why the ring is a base rate, not a probability.
+  function ring(value, label, ci) {
     const C = 2 * Math.PI * 56;
     const filled = value == null ? 0 : Math.max(0, Math.min(1, value));
     const tone = value == null ? '' : (filled >= 0.5 ? 'pos' : 'neg');
-    return `<div class="ring-box" role="img" aria-label="${label}: ${value == null ? 'unavailable' : pct(filled, 0)}">
+    const ciText = ci && ci.low != null
+      ? `<span class="ring-ci tip term" tabindex="0" data-tip="95% Wilson interval for this win rate across the matched analogues. A wide band means the sample is too small to treat the headline number as precise.">${pct(ci.low, 0)}–${pct(ci.high, 0)} likely</span>`
+      : '';
+    return `<div class="ring-box" role="img" aria-label="${label}: ${value == null ? 'unavailable' : pct(filled, 0)}${ci && ci.low != null ? `, 95% confidence interval ${pct(ci.low, 0)} to ${pct(ci.high, 0)}` : ''}">
       <svg class="ring" viewBox="0 0 132 132" aria-hidden="true">
         <circle class="track" cx="66" cy="66" r="56"></circle>
         <circle class="ring-fill ${tone}" cx="66" cy="66" r="56" style="stroke-dasharray:${C.toFixed(1)};stroke-dashoffset:${(C * (1 - filled)).toFixed(1)}"></circle>
         <!-- 50% coin-flip notch: half the circumference from the (rotated) start. -->
         <line class="ring-notch" x1="4" y1="66" x2="16" y2="66"></line>
       </svg>
-      <div class="ring-val"><b>${value == null ? '—' : pct(filled, 0)}</b><span>${label}</span></div>
+      <div class="ring-val"><b>${value == null ? '—' : pct(filled, 0)}</b><span>${label}</span>${ciText}</div>
     </div>`;
   }
 
@@ -1627,7 +1654,7 @@ body { font-variant-numeric: tabular-nums; }
         <div class="card c4 glass-spec" id="card-verdict">
           ${cardHead('crosshair', 'Verdict at a glance')}
           <div style="display:flex; align-items:center; gap:var(--space-5); flex-wrap:wrap;">
-            ${ring(s.winRate20d, '20d win rate')}
+            ${ring(s.winRate20d, '20d win rate', s.winRate20dCI)}
             <div style="min-width:0;">
               <div class="badges" style="margin-bottom:var(--space-3);">
                 <span class="badge badge-regime">${tip(REGIME_TIP[data.regime] || `Regime ${data.regime}`, String(data.regime).replace(/_/g, ' '))}</span>

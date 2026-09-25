@@ -73,8 +73,17 @@ async function main() {
     console.warn('WARNING: scenarioDB is empty — every upstream fetch failed. Do not fabricate entries here to fill the gap.');
   }
 
-  fs.writeFileSync(path.join(__dirname, '../scenarioDB.json'), JSON.stringify(all, null, 2));
-  console.log(`Wrote ${all.length} scenarios to scenarioDB.json`);
+  // The build timestamp is written INTO the file. Previously the UI read file
+  // mtime, which git checkouts, clones and Vercel's build step all rewrite —
+  // that surfaced a bogus "scenario DB built 2018-10-20" in the provenance
+  // footer. An embedded, immutable value is the only honest source.
+  const output = {
+    builtAt: new Date().toISOString(),
+    scenarioCount: all.length,
+    scenarios: all,
+  };
+  fs.writeFileSync(path.join(__dirname, '../scenarioDB.json'), JSON.stringify(output));
+  console.log(`Wrote ${all.length} scenarios to scenarioDB.json (builtAt: ${output.builtAt})`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

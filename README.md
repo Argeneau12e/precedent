@@ -106,19 +106,79 @@ so the serverless function has both the scenarios and the bar fallback.
 
 ## Verification
 
-- `scenarioDB.json`: ~9,400 scenarios across 10 assets, every entry carrying real
-  forward returns and drawdowns computed from historical bars.
+Run the real-browser suite (starts its own server on port 3111):
+
+```bash
+npx playwright install chromium   # once
+npm test                          # 43 assertions
+npm run validate                  # walk-forward validation
+```
+
+- `scenarioDB.json`: 9,446 scenarios across 10 assets, every entry carrying real
+  forward returns and drawdowns computed from historical bars. The file records
+  its own `builtAt` timestamp — the UI reads that, never file mtime, which git
+  and Vercel both rewrite.
 - `npm run snapshot`: 10 symbols, 500 real daily bars each.
-- `/api/stress-test` was exercised end-to-end on both the live path and the
-  snapshot-fallback path (the case where the serverless host can't reach the
-  upstream) and returns a full brief in both.
-- Failure modes are explicit, never fabricated: missing `GROQ_API_KEY` returns
-  the real base rates with a note; unknown symbol returns a 502 explaining that
-  no snapshot covers it; under 200 bars returns a 400; an invalid NewsAPI key
-  logs a warning and omits headlines without breaking the request.
+- `npm test` drives Chromium: it boots the app, runs a full demo stress test,
+  asserts every card renders with real data, checks the security headers, fires
+  unsupported/path-traversal symbols at every endpoint, measures **actual
+  painted text contrast** in both themes, and confirms no console errors, no
+  failed requests, and no horizontal overflow at 390px.
+- `npm run validate` runs a purged walk-forward split (train on everything
+  before 2025-06-01, test on the 3,282 held-out scenarios after it) using the
+  production distance function. See below for what it found.
+
+### What the walk-forward validation actually found
+
+Reported as measured; no thresholds were tuned to improve any of it.
+
+**Holds up.** The regime classifier genuinely separates outcomes. Out of
+sample, `weak_bull` realized a 70.1% 20-day win rate and `strong_bull` 61.7%,
+while `vol_breakout` (48.0%) and `range_bound` (51.6%) realized the worst. That
+ordering is out-of-sample and is the defensible claim. Drawdown also widens
+monotonically as conditions weaken: `strong_bull` −6.4% mean max drawdown versus
+`strong_bear` −11.8%.
+
+**Does not hold up.** The Brier score of the engine's win-rate estimates is
+**0.2703, worse than the 0.25 of always guessing 50%**, and the calibration
+buckets show why: when the engine reports an 81% win rate it realized 60%, and
+when it reports 33% it realized 50%. The distance weights are hand-set and were
+never validated, so tight analogue clusters do not reliably imply better future
+outcomes. The engine is over-confident at both extremes and regresses toward
+the mean.
+
+This is exactly why the UI presents the win rate as **the base rate of a
+historical cluster, not a calibrated probability**, and why a 95% Wilson
+interval now sits under the headline number. A bare 83% from 12 analogues would
+have been misleading; the interval makes the sample size do honest work.
+
+### Failure modes are explicit, never fabricated
+
+Missing `GROQ_API_KEY` returns the real base rates with an explicit note. An
+unsupported symbol is rejected with a 400 before it can reach any upstream
+provider. Fewer than 200 bars returns a 400. A failing NewsAPI key logs a
+warning and omits headlines without breaking the request. If the LLM returns an
+impossible invalidation level (for example "drops below 204% of entry", which
+we observed and now guard against), that section is rebuilt from the computed
+adverse-excursion figure.
+
+## Security
+
+- `helmet` with an explicit CSP, `frame-ancestors 'none'`, `nosniff`.
+- Rate limiting: 20 stress tests per 10 minutes, 120 read requests per 10
+  minutes, both keyed by IP. The Groq and NewsAPI quotas are finite and the API
+  is public, so this protects the demo from being burned by a single client.
+- Input caps: thesis truncated to 500 characters, catalyst to 200, before either
+  reaches the LLM prompt.
+- Symbol allowlist enforced on `/api/bars`, `/api/playbook` and
+  `/api/stress-test`; arbitrary strings never reach Yahoo or Coinbase.
+- `.env` is git-ignored and has never been committed.
 
 ## Design
 
-Amber/gold glass palette on a near-black background, Cormorant Garamond
-headline, DM Sans body, and IBM Plex Mono for every number. No purple, no
-decorative gradients, no emoji.
+Monochrome black/white/grey with semantic red and green reserved strictly for
+positive and negative outcomes. Cormorant Garamond headline, DM Sans body, IBM
+Plex Mono for every number, and browser surfaces (selection, scrollbars, focus
+rings, native accents) themed from the same tokens. Dark and light themes, both
+contrast-verified at 4.5:1 or better. No purple, no decorative gradients, no
+emoji.

@@ -425,6 +425,120 @@ async function main() {
     check('no horizontal overflow at 390px', overflow.scrollW <= overflow.vw + 2,
       `vw=${overflow.vw} scrollW=${overflow.scrollW} :: ${overflow.wide.join(' | ')}`);
 
+    // Text that paints outside the card it belongs to is invisible to a
+    // scrollWidth test — a card whose own overflow is visible can leak its
+    // contents onto whatever sits beside it without widening the page by a
+    // single pixel. That is exactly what the regime playbook did between 981px
+    // and 1359px: its five fixed grid tracks needed 476px, the card's content
+    // box was narrower, and the last two columns were painted over the
+    // headlines list. Measuring real text geometry per card is the only way to
+    // catch it, so that is asserted directly at two common laptop widths.
+    const textEscapes = async () => page.evaluate(() => {
+      const textRect = el => {
+        let box = null;
+        const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        let n;
+        while ((n = walk.nextNode())) {
+          if (!n.textContent.trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(n);
+          for (const r of range.getClientRects()) {
+            if (!r.width || !r.height) continue;
+            box = box ? {
+              left: Math.min(box.left, r.left), top: Math.min(box.top, r.top),
+              right: Math.max(box.right, r.right), bottom: Math.max(box.bottom, r.bottom),
+            } : { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+          }
+        }
+        return box;
+      };
+      const bad = [];
+      document.querySelectorAll('#results .card').forEach(card => {
+        if (getComputedStyle(card).overflowX === 'auto') return;
+        card.querySelectorAll('*').forEach(el => {
+          if (el.closest('.table-wrap')) return;
+          const ink = textRect(el);
+          if (!ink) return;
+          // Compare against the nearest box meant to hold the text: its own
+          // padding box when the element clips, otherwise its parent. An
+          // ancestor that scrolls horizontally is a deliberate choice.
+          const own = getComputedStyle(el);
+          const host = own.overflowX === 'visible' && el.parentElement ? el.parentElement : el;
+          const hcs = getComputedStyle(host);
+          if (hcs.overflowX !== 'visible') return;
+          const over = ink.right - host.getBoundingClientRect().right;
+          if (over > 3) {
+            bad.push(`${host.className || host.tagName} "${el.textContent.replace(/\s+/g, ' ').trim().slice(0, 24)}" +${Math.round(over)}px`);
+          }
+        });
+      });
+      return [...new Set(bad)].slice(0, 4);
+    });
+    for (const w of [1280, 1024]) {
+      await page.setViewportSize({ width: w, height: 1000 });
+      await page.waitForTimeout(400);
+      const escaped = await textEscapes();
+      check(`no card text paints outside its card at ${w}px`, escaped.length === 0, escaped.join(' | '));
+    }
+    // A detector that cannot fail is decoration. Reinstate the exact rule this
+    // check exists to prevent (five fixed tracks plus the original wider gap)
+    // and confirm the measurement reports it, then remove the probe stylesheet
+    // so nothing after this point runs against a doctored page.
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await page.waitForTimeout(300);
+    const guard = await page.evaluateHandle(() => {
+      const tag = document.createElement('style');
+      tag.id = 'regression-probe';
+      tag.textContent = '.pb-row { grid-template-columns: minmax(96px, 132px) 44px minmax(90px, 1fr) 84px 84px !important; gap: var(--space-4) !important; } .pb-worst { display: inline !important; }';
+      document.head.appendChild(tag);
+      return tag;
+    });
+    await page.waitForTimeout(300);
+    const wouldFail = await textEscapes();
+    await page.evaluate(tag => tag.remove(), guard);
+    await page.waitForTimeout(300);
+    check('the overflow detector can actually fail', wouldFail.length > 0,
+      `probe detected ${wouldFail.length} escapes: ${wouldFail[0] || 'none'}`);
+    const restored = await textEscapes();
+    check('probe stylesheet removed cleanly', restored.length === 0, restored.join(' | '));
+
+    // The Wilson interval caption used to be positioned inside the ring, where
+    // it crossed the circle's own stroke by 14px (26px once the ring shrank on a
+    // phone). Asserting real ink separation between the caption and the ring
+    // SVG is what makes that structural claim testable rather than a matter of
+    // opinion — and 390px is where the old overhang was worst.
+    const ringClear = await page.evaluate(() => {
+      const ci = document.querySelector('.ring-ci');
+      const svg = document.querySelector('.ring');
+      if (!ci || !svg) return null;
+      const a = ci.getBoundingClientRect(), b = svg.getBoundingClientRect();
+      return {
+        overlapX: Math.round(Math.min(a.right, b.right) - Math.max(a.left, b.left)),
+        overlapY: Math.round(Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)),
+      };
+    });
+    check('confidence interval is clear of the ring stroke',
+      ringClear && (ringClear.overlapX <= 0 || ringClear.overlapY <= 0),
+      JSON.stringify(ringClear));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(400);
+    const ringClearMobile = await page.evaluate(() => {
+      const ci = document.querySelector('.ring-ci');
+      const svg = document.querySelector('.ring');
+      if (!ci || !svg) return null;
+      const a = ci.getBoundingClientRect(), b = svg.getBoundingClientRect();
+      return {
+        ringPx: Math.round(b.width),
+        overlapX: Math.round(Math.min(a.right, b.right) - Math.max(a.left, b.left)),
+        overlapY: Math.round(Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)),
+      };
+    });
+    check('confidence interval stays clear of the ring at 390px',
+      ringClearMobile && (ringClearMobile.overlapX <= 0 || ringClearMobile.overlapY <= 0),
+      JSON.stringify(ringClearMobile));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(400);
+
     // --- 9. Runtime hygiene --------------------------------------------------
     console.log('\nruntime hygiene');
     check('no uncaught console errors', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

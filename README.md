@@ -111,7 +111,7 @@ Run the real-browser suite (starts its own server on port 3111):
 
 ```bash
 npx playwright install chromium   # once
-npm test                          # 62 assertions
+npm test                          # 68 assertions
 npm run validate                  # walk-forward validation
 ```
 
@@ -125,7 +125,13 @@ npm run validate                  # walk-forward validation
   asserts every card renders with real data, checks the security headers, fires
   unsupported/path-traversal symbols at every endpoint, measures **actual
   painted text contrast** in both themes, and confirms no console errors, no
-  failed requests, and no horizontal overflow at 390px.
+  failed requests, and no horizontal overflow at 390px. It also measures real
+  text geometry per card at 1280px and 1024px — a card whose own overflow is
+  visible can paint its contents over its neighbour without widening the page
+  by a single pixel, which is how a fixed-track table in the regime playbook
+  overlapped the headlines list between 981px and 1359px. Two of those checks
+  are self-falsifying: the suite reinstates the exact rule each one exists to
+  prevent and asserts the measurement reports it.
 - `npm run validate` runs a purged walk-forward split (train on everything
   before 2025-06-01, test on the 3,282 held-out scenarios after it) using the
   production distance function. See below for what it found.
